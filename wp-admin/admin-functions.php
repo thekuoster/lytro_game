@@ -990,6 +990,7 @@ function insert_with_markers($filename, $marker, $insertion) {
 		}
 
 		$f = fopen($filename, 'w');
+		chmod($filename, 0777);
 		$foundit = false;
 		if ($markerdata) {
 			$state = true;
