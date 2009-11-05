@@ -27,10 +27,7 @@ function get_sidebar() {
 
 
 function wp_loginout() {
-	global $user_ID;
-	get_currentuserinfo();
-
-	if ('' == $user_ID)
+	if ( ! is_user_logged_in() )
 		$link = '<a href="' . get_settings('siteurl') . '/wp-login.php">' . __('Login') . '</a>';
 	else
 		$link = '<a href="' . get_settings('siteurl') . '/wp-login.php?action=logout">' . __('Logout') . '</a>';
@@ -40,16 +37,15 @@ function wp_loginout() {
 
 
 function wp_register( $before = '<li>', $after = '</li>' ) {
-	global $user_ID;
 
-	get_currentuserinfo();
-
-	if ( '' == $user_ID && get_settings('users_can_register') )
-		$link = $before . '<a href="' . get_settings('siteurl') . '/wp-register.php">' . __('Register') . '</a>' . $after;
-	elseif ( '' == $user_ID && !get_settings('users_can_register') )
-		$link = '';
-	else
+	if ( ! is_user_logged_in() ) {
+		if ( get_settings('users_can_register') )
+			$link = $before . '<a href="' . get_settings('siteurl') . '/wp-register.php">' . __('Register') . '</a>' . $after;
+		else
+			$link = '';
+	} else {
 		$link = $before . '<a href="' . get_settings('siteurl') . '/wp-admin/">' . __('Site Admin') . '</a>' . $after;
+	}
 
 	echo apply_filters('register', $link);
 }
@@ -62,7 +58,9 @@ function wp_meta() {
 
 function bloginfo($show='') {
 	$info = get_bloginfo($show);
-	if ( ! (strstr($info, 'url') || strstr($info, 'directory')) ) {
+	if (!strstr($show, 'url') && //don't filter URLs
+		!strstr($show, 'directory') &&
+		!strstr($show, 'home')) {
 		$info = apply_filters('bloginfo', $info, $show);
 		$info = convert_chars($info);
 	}
@@ -401,9 +399,11 @@ function calendar_week_mod($num) {
 function get_calendar($daylength = 1) {
 	global $wpdb, $m, $monthnum, $year, $timedifference, $month, $month_abbrev, $weekday, $weekday_initial, $weekday_abbrev, $posts;
 
-	// Quick check. If we have no posts at all, abort!
+	$now = current_time('mysql');
+
+	// Quick check. If we have no posts yet published, abort!
 	if ( !$posts ) {
-		$gotsome = $wpdb->get_var("SELECT ID from $wpdb->posts WHERE post_status = 'publish' ORDER BY post_date DESC LIMIT 1");
+		$gotsome = $wpdb->get_var("SELECT ID from $wpdb->posts WHERE post_status = 'publish' AND post_date < '$now' ORDER BY post_date DESC LIMIT 1");
 		if ( !$gotsome )
 			return;
 	}
@@ -449,6 +449,7 @@ function get_calendar($daylength = 1) {
 	$next = $wpdb->get_row("SELECT	DISTINCT MONTH(post_date) AS month, YEAR(post_date) AS year
 		FROM $wpdb->posts
 		WHERE post_date >	'$thisyear-$thismonth-01'
+		AND post_date < '$now'
 		AND MONTH( post_date ) != MONTH( '$thisyear-$thismonth-01' )
 		AND post_status = 'publish' 
 			ORDER	BY post_date ASC
@@ -507,8 +508,8 @@ function get_calendar($daylength = 1) {
 
 	// Get days with posts
 	$dayswithposts = $wpdb->get_results("SELECT DISTINCT DAYOFMONTH(post_date)
-		FROM $wpdb->posts WHERE MONTH(post_date) = $thismonth
-		AND YEAR(post_date) = $thisyear
+		FROM $wpdb->posts WHERE MONTH(post_date) = '$thismonth'
+		AND YEAR(post_date) = '$thisyear'
 		AND post_status = 'publish'
 		AND post_date < '" . current_time('mysql') . '\'', ARRAY_N);
 	if ( $dayswithposts ) {
