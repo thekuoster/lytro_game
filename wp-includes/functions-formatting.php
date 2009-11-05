@@ -41,7 +41,7 @@ function wptexturize($text) {
 		} else {
 			$next = true;
 		}
-		$curl = preg_replace('/&([^#])(?![a-z1-4]{1,8};)/', '&#038;$1', $curl);
+		$curl = preg_replace('/&([^#])(?![a-zA-Z1-4]{1,8};)/', '&#038;$1', $curl);
 		$output .= $curl;
 	}
 	return $output;
@@ -98,10 +98,14 @@ function seems_utf8($Str) { # by bmorel at ssi dot fr
 
 function wp_specialchars( $text, $quotes = 0 ) {
 	// Like htmlspecialchars except don't double-encode HTML entities
-	$text = preg_replace('/&([^#])(?![a-z1-4]{1,8};)/', '&#038;$1', $text);-
+	$text = preg_replace('/&([^#])(?![a-z1-4]{1,8};)/', '&#038;$1', $text);
 	$text = str_replace('<', '&lt;', $text);
 	$text = str_replace('>', '&gt;', $text);
-	if ( $quotes ) {
+	if ( 'double' === $quotes ) {
+		$text = str_replace('"', '&quot;', $text);
+	} elseif ( 'single' === $quotes ) {
+		$text = str_replace("'", '&#039;', $text);
+	} elseif ( $quotes ) {
 		$text = str_replace('"', '&quot;', $text);
 		$text = str_replace("'", '&#039;', $text);
 	}
@@ -141,6 +145,9 @@ function utf8_uri_encode( $utf8_string ) {
 }
 
 function remove_accents($string) {
+	if ( !preg_match('/[\x80-\xff]/', $string) )
+		return $string;
+
 	if (seems_utf8($string)) {
 		$chars = array(
 		// Decompositions for Latin-1 Supplement
@@ -274,7 +281,7 @@ function sanitize_user( $username, $strict = false ) {
 
 	// If strict, reduce to ASCII for max portability.
 	if ( $strict )
-		$username = preg_replace('|[^a-z0-9 _.-@]|i', '', $username);
+		$username = preg_replace('|[^a-z0-9 _.\-@]|i', '', $username);
 
 	return apply_filters('sanitize_user', $username, $raw_username, $strict);
 }
@@ -501,6 +508,9 @@ function balanceTags($text, $is_comment = 0) {
 	return $newtext;
 }
 
+function force_balance_tags($text) {
+	return balanceTags($text, 0, true);
+}
 
 function format_to_edit($content, $richedit = false) {
 	$content = apply_filters('format_to_edit', $content);
@@ -517,10 +527,11 @@ function format_to_post($content) {
 
 function zeroise($number,$threshold) { // function to add leading zeros when necessary
 	return sprintf('%0'.$threshold.'s', $number);
-	}
+}
 
 
 function backslashit($string) {
+	$string = preg_replace('/^([0-9])/', '\\\\\\\\\1', $string);
 	$string = preg_replace('/([a-z])/i', '\\\\\1', $string);
 	return $string;
 }
@@ -570,10 +581,11 @@ function antispambot($emailaddy, $mailto=0) {
 }
 
 function make_clickable($ret) {
-	$ret = ' ' . $ret . ' ';
-	$ret = preg_replace("#([\s>])(https?)://([^\s<>{}()]+[^\s.,<>{}()])#i", "$1<a href='$2://$3' rel='nofollow'>$2://$3</a>", $ret);
-	$ret = preg_replace("#(\s)www\.([a-z0-9\-]+)\.([a-z0-9\-.\~]+)((?:/[^ <>{}()\n\r]*[^., <>{}()\n\r]?)?)#i", "$1<a href='http://www.$2.$3$4' rel='nofollow'>www.$2.$3$4</a>", $ret);
-	$ret = preg_replace("#(\s)([a-z0-9\-_.]+)@([a-z0-9\-_.]+)\.([^,< \n\r]+)#i", "$1<a href=\"mailto:$2@$3.$4\">$2@$3.$4</a>", $ret);
+	$ret = ' ' . $ret;
+	$ret = preg_replace("#(^|[\n ])([\w]+?://[\w\#$%&~/.\-;:=,?@\[\]+]*)#is", "$1<a href='$2' rel='nofollow'>$2</a>", $ret);
+	$ret = preg_replace("#(^|[\n ])((www|ftp)\.[\w\#$%&~/.\-;:=,?@\[\]+]*)#is", "$1<a href='http://$2' rel='nofollow'>$2</a>", $ret);
+	$ret = preg_replace("#(\s)([a-z0-9\-_.]+)@([^,< \n\r]+)#i", "$1<a href=\"mailto:$2@$3\">$2@$3</a>", $ret);
+	$ret = substr($ret, 1);
 	$ret = trim($ret);
 	return $ret;
 }
@@ -997,10 +1009,7 @@ function ent2ncr($text) {
 		'&diams;' => '&#9830;'
 	);
 
-	foreach ($to_ncr as $entity => $ncr) {
-		$text = str_replace($entity, $ncr, $text);
-	}
-	return $text;
+	return str_replace( array_keys($to_ncr), array_values($to_ncr), $text );
 }
 
 function wp_richedit_pre($text) {
@@ -1018,4 +1027,10 @@ function wp_richedit_pre($text) {
 	return apply_filters('richedit_pre', $output);
 }
 
+// Escape single quotes, specialchar double quotes, and fix line endings.
+function js_escape($text) {
+	$text = wp_specialchars($text, 'double');
+	$text = str_replace('&#039;', "'", $text);
+	return preg_replace("/\r?\n/", "\\n", addslashes($text));
+}
 ?>
