@@ -1,14 +1,15 @@
 <?php
 
-function get_the_author($idmode = '') {
+function get_the_author($deprecated = '') {
 	global $authordata;
 	return apply_filters('the_author', $authordata->display_name);
 }
 
-function the_author($idmode = '', $echo = true) {
-	if ( $echo )
-		echo get_the_author($idmode);
-	return get_the_author($idmode);
+// Using echo = false is deprecated.  Use get_the_author instead.
+function the_author($deprecated = '', $deprecated_echo = true) {
+	if ( $deprecated_echo )
+		echo get_the_author();
+	return get_the_author();
 }
 
 function get_the_author_description() {
@@ -127,15 +128,15 @@ function the_author_posts() {
 }
 
 /* the_author_posts_link() requires no get_, use get_author_link() */
-function the_author_posts_link($idmode='') {
+function the_author_posts_link($deprecated = '') {
 	global $authordata;
 
-	echo '<a href="' . get_author_link(0, $authordata->ID, $authordata->user_nicename) . '" title="' . sprintf(__("Posts by %s"), wp_specialchars(the_author($idmode, false))) . '">' . the_author($idmode, false) . '</a>';
+	echo '<a href="' . get_author_link(0, $authordata->ID, $authordata->user_nicename) . '" title="' . sprintf(__("Posts by %s"), attribute_escape(get_the_author())) . '">' . get_the_author() . '</a>';
 }
 
 function get_author_link($echo = false, $author_id, $author_nicename = '') {
 	global $wpdb, $wp_rewrite, $post, $cache_userdata;
-	$auth_ID = $author_id;
+	$auth_ID = (int) $author_id;
 	$link = $wp_rewrite->get_author_permastruct();
 
 	if ( empty($link) ) {
@@ -182,7 +183,7 @@ function list_authors($optioncount = false, $exclude_admin = true, $show_fullnam
 	$query = "SELECT ID, user_nicename from $wpdb->users " . ($exclude_admin ? "WHERE user_login <> 'admin' " : '') . "ORDER BY display_name";
 	$authors = $wpdb->get_results($query);
 
-	foreach ( $authors as $author ) {
+	foreach ( (array) $authors as $author ) {
 		$author = get_userdata( $author->ID );
 		$posts = get_usernumposts($author->ID);
 		$name = $author->nickname;
@@ -196,7 +197,7 @@ function list_authors($optioncount = false, $exclude_admin = true, $show_fullnam
 			if ( !$hide_empty )
 				$link = $name;
 		} else {
-			$link = '<a href="' . get_author_link(0, $author->ID, $author->user_nicename) . '" title="' . sprintf(__("Posts by %s"), wp_specialchars($author->display_name)) . '">' . $name . '</a>';
+			$link = '<a href="' . get_author_link(0, $author->ID, $author->user_nicename) . '" title="' . sprintf(__("Posts by %s"), attribute_escape($author->display_name)) . '">' . $name . '</a>';
 
 			if ( (! empty($feed_image)) || (! empty($feed)) ) {
 				$link .= ' ';

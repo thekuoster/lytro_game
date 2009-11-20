@@ -124,7 +124,7 @@ switch ($action) {
 <table class="editform" width="100%" cellspacing="2" cellpadding="5">
 <tr>
 	<th width="33%" scope="row"><?php _e('Name:') ?></th>
-	<td width="67%"><input name="cat_name" type="text" value="<?php echo wp_specialchars($row->cat_name)?>" size="30" /></td>
+	<td width="67%"><input name="cat_name" type="text" value="<?php echo attribute_escape($row->cat_name)?>" size="30" /></td>
 </tr>
 <tr>
 	<th scope="row"><?php _e('Show:') ?></th>
@@ -309,7 +309,7 @@ $results = $wpdb->get_results("SELECT cat_id, cat_name, auto_toggle, show_images
          . " show_rating, show_updated, sort_order, sort_desc, text_before_link, text_after_link, "
          . " text_after_all, list_limit FROM $wpdb->linkcategories ORDER BY cat_id");
 $i = 1;
-foreach ($results as $row) {
+foreach ( (array) $results as $row) {
     if ($row->list_limit == -1) {
         $row->list_limit = __('none');
     }
@@ -356,8 +356,14 @@ foreach ($results as $row) {
                 <td nowrap="nowrap"><?php echo wp_specialchars($row->text_after_all)?></td>
                 <td><?php echo $row->list_limit ?></td>
                 <td><a href="link-categories.php?cat_id=<?php echo $row->cat_id?>&amp;action=Edit" class="edit"><?php _e('Edit') ?></a></td>
-                <td><a href="<?php echo wp_nonce_url("link-categories.php?cat_id=$row->cat_id?>&amp;action=Delete", 'delete-link-category_' . $row->cat_id) ?>" onclick="return deleteSomething( 'link category', <?php echo $row->cat_id . ", '" . sprintf(__("You are about to delete the &quot;%s&quot; link category.\\n&quot;Cancel&quot; to stop, &quot;OK&quot; to delete."), js_escape($row->cat_name)); ?>' );" class="delete"><?php _e('Delete') ?></a></td>
-              </tr>
+                <td>
+				<?php if (1 == $row->cat_id ) { 
+					_e('Default');
+				} else { ?>
+					<a href="<?php echo wp_nonce_url("link-categories.php?cat_id=$row->cat_id?>&amp;action=Delete", 'delete-link-category_' . $row->cat_id) ?>" onclick="return deleteSomething( 'link category', <?php echo $row->cat_id . ", '" . sprintf(__("You are about to delete the &quot;%s&quot; link category.\\n&quot;Cancel&quot; to stop, &quot;OK&quot; to delete."), js_escape($row->cat_name)); ?>' );" class="delete"><?php _e('Delete') ?></a>
+				<?php } ?>
+              </td>
+	   </tr>
 <?php
         ++$i;
     }

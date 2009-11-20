@@ -63,6 +63,7 @@ switch ($action) {
     $q = $wpdb->query("update $wpdb->links SET link_owner='$newowner' WHERE link_id IN ($all_links)");
 
     wp_redirect($this_file);
+    exit;
     break;
   }
   case 'visibility':
@@ -100,6 +101,7 @@ switch ($action) {
     }
 
     wp_redirect($this_file);
+    exit;
     break;
   }
   case 'move':
@@ -120,6 +122,7 @@ switch ($action) {
     $q = $wpdb->query("update $wpdb->links SET link_category='$category' WHERE link_id IN ($all_links)");
 
     wp_redirect($this_file);
+    exit();
     break;
   }
 
@@ -130,6 +133,7 @@ switch ($action) {
 	add_link();
 	
     wp_redirect(wp_get_referer() . '?added=true');
+    exit;
     break;
   } // end Add
 
@@ -151,6 +155,7 @@ switch ($action) {
 	
     setcookie('links_show_cat_id_' . COOKIEHASH, $links_show_cat_id, time()+600);
     wp_redirect($this_file);
+    exit;
     break;
   } // end Save
 
@@ -174,6 +179,7 @@ switch ($action) {
     $links_show_cat_id = $cat_id;
     setcookie('links_show_cat_id_' . COOKIEHASH, $links_show_cat_id, time()+600);
     wp_redirect($this_file);
+    exit;
     break;
   } // end Delete
 
@@ -321,7 +327,7 @@ function checkAll(form)
     <?php wp_nonce_field('bulk-bookmarks') ?>
     <input type="hidden" name="link_id" value="" />
     <input type="hidden" name="action" value="" />
-    <input type="hidden" name="order_by" value="<?php echo wp_specialchars($order_by, 1); ?>" />
+    <input type="hidden" name="order_by" value="<?php echo attribute_escape($order_by); ?>" />
     <input type="hidden" name="cat_id" value="<?php echo (int) $cat_id ?>" />
   <table id="the-list-x" width="100%" cellpadding="3" cellspacing="3">
     <tr>
@@ -351,10 +357,10 @@ function checkAll(form)
     $links = $wpdb->get_results($sql);
     if ($links) {
         foreach ($links as $link) {
-      	    $link->link_name = wp_specialchars($link->link_name);
+      	    $link->link_name = attribute_escape($link->link_name);
       	    $link->link_category = wp_specialchars($link->link_category);
       	    $link->link_description = wp_specialchars($link->link_description);
-            $link->link_url = wp_specialchars($link->link_url);
+            $link->link_url = attribute_escape($link->link_url);
             $short_url = str_replace('http://', '', $link->link_url);
             $short_url = str_replace('www.', '', $short_url);
             if ('/' == substr($short_url, -1))

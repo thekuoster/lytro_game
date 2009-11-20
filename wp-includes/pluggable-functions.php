@@ -78,9 +78,7 @@ function get_userdata( $user_id ) {
 
 	if ($metavalues) {
 		foreach ( $metavalues as $meta ) {
-			@ $value = unserialize($meta->meta_value);
-			if ($value === FALSE)
-				$value = $meta->meta_value;
+			$value = maybe_unserialize($meta->meta_value);
 			$user->{$meta->meta_key} = $value;
 
 			// We need to set user_level from meta, not row
@@ -122,6 +120,8 @@ function get_userdatabylogin($user_login) {
 	if ( $userdata )
 		return $userdata;
 
+	$user_login = $wpdb->escape($user_login);
+
 	if ( !$user = $wpdb->get_row("SELECT * FROM $wpdb->users WHERE user_login = '$user_login'") )
 		return false;
 
@@ -131,9 +131,7 @@ function get_userdatabylogin($user_login) {
 
 	if ($metavalues) {
 		foreach ( $metavalues as $meta ) {
-			@ $value = unserialize($meta->meta_value);
-			if ($value === FALSE)
-				$value = $meta->meta_value;
+			$value = maybe_unserialize($meta->meta_value);
 			$user->{$meta->meta_key} = $value;
 
 			// We need to set user_level from meta, not row
@@ -258,7 +256,7 @@ endif;
 // Cookie safe redirect.  Works around IIS Set-Cookie bug.
 // http://support.microsoft.com/kb/q176113/
 if ( !function_exists('wp_redirect') ) :
-function wp_redirect($location) {
+function wp_redirect($location, $status = 302) {
 	global $is_IIS;
 
 	$location = preg_replace('|[^a-z0-9-~+_.?#=&;,/:%]|i', '', $location);
@@ -266,10 +264,13 @@ function wp_redirect($location) {
 	$strip = array('%0d', '%0a');
 	$location = str_replace($strip, '', $location);
 
-	if ($is_IIS)
+	if ( $is_IIS ) {
 		header("Refresh: 0;url=$location");
-	else
+	} else {
+		if ( php_sapi_name() != 'cgi-fcgi' )
+			status_header($status); // This causes problems on IIS and some FastCGI setups
 		header("Location: $location");
+	}
 }
 endif;
 
@@ -335,7 +336,7 @@ function wp_notify_postauthor($comment_id, $comment_type='') {
 
 	if ('' == $user->user_email) return false; // If there's no email to send the comment to
 
-	$comment_author_domain = gethostbyaddr($comment->comment_author_IP);
+	$comment_author_domain = @gethostbyaddr($comment->comment_author_IP);
 
 	$blogname = get_settings('blogname');
 	
@@ -412,7 +413,7 @@ function wp_notify_moderator($comment_id) {
 	$comment = $wpdb->get_row("SELECT * FROM $wpdb->comments WHERE comment_ID='$comment_id' LIMIT 1");
 	$post = $wpdb->get_row("SELECT * FROM $wpdb->posts WHERE ID='$comment->comment_post_ID' LIMIT 1");
 
-	$comment_author_domain = gethostbyaddr($comment->comment_author_IP);
+	$comment_author_domain = @gethostbyaddr($comment->comment_author_IP);
 	$comments_waiting = $wpdb->get_var("SELECT count(comment_ID) FROM $wpdb->comments WHERE comment_approved = '0'");
 
 	$notify_message  = sprintf( __('A new comment on the post #%1$s "%2$s" is waiting for your approval'), $post->ID, $post->post_title ) . "\r\n";
@@ -467,7 +468,7 @@ endif;
 if ( !function_exists('wp_verify_nonce') ) :
 function wp_verify_nonce($nonce, $action = -1) {
 	$user = wp_get_current_user();
-	$uid = $user->id;
+	$uid = (int) $user->id;
 
 	$i = ceil(time() / 43200);
 
@@ -481,7 +482,7 @@ endif;
 if ( !function_exists('wp_create_nonce') ) :
 function wp_create_nonce($action = -1) {
 	$user = wp_get_current_user();
-	$uid = $user->id;
+	$uid = (int) $user->id;
 
 	$i = ceil(time() / 43200);
 	

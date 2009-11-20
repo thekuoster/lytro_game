@@ -25,14 +25,20 @@ $comment_content      = trim($_POST['comment']);
 
 // If the user is logged in
 $user = wp_get_current_user();
-if ( $user->ID ) :
+if ( $user->ID ) {
 	$comment_author       = $wpdb->escape($user->display_name);
 	$comment_author_email = $wpdb->escape($user->user_email);
 	$comment_author_url   = $wpdb->escape($user->user_url);
-else :
+	if ( current_user_can('unfiltered_html') ) {
+		if ( wp_create_nonce('unfiltered-html-comment_' . $comment_post_ID) != $_POST['_wp_unfiltered_html_comment'] ) {
+			kses_remove_filters(); // start with a clean slate
+			kses_init_filters(); // set up the filters
+		}
+	}
+} else {
 	if ( get_option('comment_registration') )
 		die( __('Sorry, you must be logged in to post a comment.') );
-endif;
+}
 
 $comment_type = '';
 
@@ -57,8 +63,9 @@ if ( !$user->ID ) :
 	setcookie('comment_author_url_' . COOKIEHASH, clean_url($comment->comment_author_url), time() + 30000000, COOKIEPATH, COOKIE_DOMAIN);
 endif;
 
-$location = ( empty( $_POST['redirect_to'] ) ) ? get_permalink( $comment_post_ID ) : $_POST['redirect_to']; 
+$location = ( empty($_POST['redirect_to']) ? get_permalink($comment_post_ID) : $_POST['redirect_to'] ) . '#comment-' . $comment_id;
+$location = apply_filters('comment_post_redirect', $location, $comment);
 
-wp_redirect( $location );
+wp_redirect($location);
 
 ?>
