@@ -24,6 +24,7 @@ function wp_insert_post($postarr = array()) {
 
 	// Get the basics.
 	$post_content    = apply_filters('content_save_pre',   $post_content);
+	$post_content_filtered = apply_filters('content_filtered_save_pre',   $post_content_filtered);
 	$post_excerpt    = apply_filters('excerpt_save_pre',   $post_excerpt);
 	$post_title      = apply_filters('title_save_pre',     $post_title);
 	$post_category   = apply_filters('category_save_pre',  $post_category);
@@ -46,7 +47,7 @@ function wp_insert_post($postarr = array()) {
 	
 	// Get the post ID.
 	if ( $update )
-		$post_ID = $ID;
+		$post_ID = (int) $ID;
 
 	// Create a valid post name.  Drafts are allowed to have an empty
 	// post name.
@@ -221,6 +222,7 @@ function wp_insert_attachment($object, $file = false, $post_parent = 0) {
 
 	// Get the basics.
 	$post_content    = apply_filters('content_save_pre',   $post_content);
+	$post_content_filtered = apply_filters('content_filtered_save_pre',   $post_content_filtered);
 	$post_excerpt    = apply_filters('excerpt_save_pre',   $post_excerpt);
 	$post_title      = apply_filters('title_save_pre',     $post_title);
 	$post_category   = apply_filters('category_save_pre',  $post_category);
@@ -302,6 +304,7 @@ function wp_insert_attachment($object, $file = false, $post_parent = 0) {
 			post_date = '$post_date',
 			post_date_gmt = '$post_date_gmt',
 			post_content = '$post_content',
+			post_content_filtered = '$post_content_filtered',
 			post_title = '$post_title',
 			post_excerpt = '$post_excerpt',
 			post_status = '$post_status',
@@ -321,9 +324,9 @@ function wp_insert_attachment($object, $file = false, $post_parent = 0) {
 	} else {
 		$wpdb->query(
 			"INSERT INTO $wpdb->posts
-			(post_author, post_date, post_date_gmt, post_content, post_title, post_excerpt,  post_status, comment_status, ping_status, post_password, post_name, to_ping, pinged, post_modified, post_modified_gmt, post_parent, menu_order, post_mime_type, guid)
+			(post_author, post_date, post_date_gmt, post_content, post_content_filtered, post_title, post_excerpt,  post_status, comment_status, ping_status, post_password, post_name, to_ping, pinged, post_modified, post_modified_gmt, post_parent, menu_order, post_mime_type, guid)
 			VALUES
-			('$post_author', '$post_date', '$post_date_gmt', '$post_content', '$post_title', '$post_excerpt', '$post_status', '$comment_status', '$ping_status', '$post_password', '$post_name', '$to_ping', '$pinged', '$post_date', '$post_date_gmt', '$post_parent', '$menu_order', '$post_mime_type', '$guid')");
+			('$post_author', '$post_date', '$post_date_gmt', '$post_content', '$post_content_filtered', '$post_title', '$post_excerpt', '$post_status', '$comment_status', '$ping_status', '$post_password', '$post_name', '$to_ping', '$pinged', '$post_date', '$post_date_gmt', '$post_parent', '$menu_order', '$post_mime_type', '$guid')");
 			$post_ID = $wpdb->insert_id;			
 	}
 	
@@ -403,6 +406,7 @@ function wp_get_recent_posts($num = 10) {
 	global $wpdb;
 
 	// Set the limit clause, if we got a limit
+	$num = (int) $num;
 	if ($num) {
 		$limit = "LIMIT $num";
 	}
@@ -473,6 +477,9 @@ function wp_get_post_cats($blogid = '1', $post_ID = 0) {
 
 function wp_set_post_cats($blogid = '1', $post_ID = 0, $post_categories = array()) {
 	global $wpdb;
+	
+	$post_ID = (int) $post_ID;
+
 	// If $post_categories isn't already an array, make it one:
 	if (!is_array($post_categories) || 0 == count($post_categories))
 		$post_categories = array(get_option('default_category'));
@@ -483,7 +490,7 @@ function wp_set_post_cats($blogid = '1', $post_ID = 0, $post_categories = array(
 	$old_categories = $wpdb->get_col("
 		SELECT category_id 
 		FROM $wpdb->post2cat 
-		WHERE post_id = $post_ID");
+		WHERE post_id = '$post_ID'");
 	
 	if (!$old_categories) {
 		$old_categories = array();
@@ -498,8 +505,8 @@ function wp_set_post_cats($blogid = '1', $post_ID = 0, $post_categories = array(
 		foreach ($delete_cats as $del) {
 			$wpdb->query("
 				DELETE FROM $wpdb->post2cat 
-				WHERE category_id = $del 
-					AND post_id = $post_ID 
+				WHERE category_id = '$del' 
+					AND post_id = '$post_ID' 
 				");
 		}
 	}
@@ -509,12 +516,14 @@ function wp_set_post_cats($blogid = '1', $post_ID = 0, $post_categories = array(
 
 	if ($add_cats) {
 		foreach ($add_cats as $new_cat) {
-			$wpdb->query("
-				INSERT INTO $wpdb->post2cat (post_id, category_id) 
-				VALUES ($post_ID, $new_cat)");
+			$new_cat = (int) $new_cat;
+			if ( !empty($new_cat) )
+				$wpdb->query("
+					INSERT INTO $wpdb->post2cat (post_id, category_id) 
+					VALUES ('$post_ID', '$new_cat')");
 		}
 	}
-	
+
 	// Update category counts.
 	$all_affected_cats = array_unique(array_merge($post_categories, $old_categories));
 	foreach ( $all_affected_cats as $cat_id ) {
@@ -548,6 +557,8 @@ function wp_delete_post($postid = 0) {
 
 	if ( 'static' == $post->post_status )
 		$wpdb->query("UPDATE $wpdb->posts SET post_parent = $post->post_parent WHERE post_parent = $postid AND post_status = 'static'");
+
+	$wpdb->query("UPDATE $wpdb->posts SET post_parent = $post->post_parent WHERE post_parent = $postid AND post_status = 'attachment'");
 
 	$wpdb->query("DELETE FROM $wpdb->posts WHERE ID = $postid");
 	
@@ -683,6 +694,7 @@ function wp_blacklist_check($author, $email, $url, $comment, $user_ip, $user_age
 
 function wp_proxy_check($ipnum) {
 	if ( get_option('open_proxy_check') && isset($ipnum) ) {
+		$ipnum = preg_replace( '/([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}).*/', '$1', $ipnum );
 		$rev_ip = implode( '.', array_reverse( explode( '.', $ipnum ) ) );
 		$lookup = $rev_ip . '.sbl-xbl.spamhaus.org.';
 		if ( $lookup != gethostbyname( $lookup ) )

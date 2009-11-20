@@ -48,11 +48,11 @@ case 'post':
 			break;
 		}
 	} else {
-		$location = 'post.php?posted=true';
+		$location = "post.php?posted=$post_ID";
 	}
 
 	if ( 'static' == $_POST['post_status'] )
-		$location = "page-new.php?saved=true";
+		$location = "page-new.php?saved=$post_ID";
 
 	if ( isset($_POST['save']) )
 		$location = "post.php?action=edit&post=$post_ID";
@@ -81,7 +81,7 @@ case 'edit':
 	?>
 	<div id='preview' class='wrap'>
 	<h2 id="preview-post"><?php _e('Post Preview (updated when post is saved)'); ?> <small class="quickjump"><a href="#write-post"><?php _e('edit &uarr;'); ?></a></small></h2>
-		<iframe src="<?php echo add_query_arg('preview', 'true', get_permalink($post->ID)); ?>" width="100%" height="600" ></iframe>
+		<iframe src="<?php echo clean_url(apply_filters('preview_post_link', add_query_arg('preview', 'true', get_permalink($post->ID)))); ?>" width="100%" height="600" ></iframe>
 	</div>
 	<?php
 	break;
@@ -138,10 +138,13 @@ case 'editpost':
 
 case 'delete':
 	$post_id = (isset($_GET['post']))  ? intval($_GET['post']) : intval($_POST['post_ID']);
-	check_admin_referer('delete-post_' . $post_id);
 
 	$post = & get_post($post_id);
-	
+	if ( 'static' == $post->post_status )
+		check_admin_referer('delete-page_' . $post_id);
+	else
+		check_admin_referer('delete-post_' . $post_id);
+
 	if ( !current_user_can('edit_post', $post_id) )	
 		die( __('You are not allowed to delete this post.') );
 
@@ -154,9 +157,12 @@ case 'delete':
 	}
 
 	$sendback = wp_get_referer();
-	if (strstr($sendback, 'post.php')) $sendback = get_settings('siteurl') .'/wp-admin/post.php';
-	elseif (strstr($sendback, 'attachments.php')) $sendback = get_settings('siteurl') .'/wp-admin/attachments.php';
-	$sendback = preg_replace('|[^a-z0-9-~+_.?#=&;,/:]|i', '', $sendback);
+	if ( 'static' == $post->post_status )
+		$sendback = get_option('siteurl') . '/wp-admin/edit-pages.php';
+	elseif ( strstr($sendback, 'post.php') )
+		$sendback = get_option('siteurl') .'/wp-admin/post.php';
+	elseif ( strstr($sendback, 'attachments.php') )
+		$sendback = get_option('siteurl') .'/wp-admin/attachments.php';
 	wp_redirect($sendback);
 	break;
 
@@ -188,7 +194,7 @@ case 'confirmdeletecomment':
 	$comment = (int) $_GET['comment'];
 	$p = (int) $_GET['p'];
 
-	if ( ! $comment = get_comment($comment) )
+	if ( ! $comment = get_comment_to_edit($comment) )
 		die(sprintf(__('Oops, no comment with this ID. <a href="%s">Go back</a>!'), 'edit.php'));
 
 	if ( !current_user_can('edit_post', $comment->comment_post_ID) )	
@@ -335,13 +341,10 @@ case 'editedcomment':
 
 	edit_comment();
 
-	$referredby = $_POST['referredby'];
-	if (!empty($referredby)) {
-		wp_redirect($referredby);
-	} else {
-		wp_redirect("edit.php?p=$comment_post_ID&c=1#comments");
-	}
-
+	$location = ( empty($_POST['referredby']) ? "edit.php?p=$comment_post_ID&c=1" : $_POST['referredby'] ) . '#comment-' . $comment_ID;
+	$location = apply_filters('comment_edit_redirect', $location, $comment_ID);
+	wp_redirect($location);
+	exit();
 	break;
 
 default:
@@ -349,7 +352,7 @@ default:
 	require_once ('./admin-header.php');
 ?>
 <?php if ( isset($_GET['posted']) ) : ?>
-<div id="message" class="updated fade"><p><?php printf(__('Post saved. <a href="%s">View site &raquo;</a>'), get_bloginfo('home') . '/'); ?></p></div>
+<div id="message" class="updated fade"><p><strong><?php _e('Post saved.'); ?></strong> <a href="<?php echo get_permalink( $_GET['posted'] ); ?>"><?php _e('View post'); ?> &raquo;</a></p></div>
 <?php endif; ?>
 <?php
 	if ( current_user_can('edit_posts') ) {
@@ -384,7 +387,7 @@ default:
 
 		include('edit-form-advanced.php');
 ?>
-<div class="wrap">
+<div id="wp-bookmarklet" class="wrap">
 <?php echo '<h3>'.__('WordPress bookmarklet').'</h3>
 <p>'.__('Right click on the following link and choose "Add to favorites" to create a posting shortcut.').'</p>'; ?>
 <p>

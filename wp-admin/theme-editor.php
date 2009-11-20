@@ -58,11 +58,15 @@ case 'update':
 		$f = fopen($real_file, 'w+');
 		fwrite($f, $newcontent);
 		fclose($f);
-		wp_redirect("theme-editor.php?file=$file&theme=$theme&a=te");
+		$location = "theme-editor.php?file=$file&theme=$theme&a=te";
 	} else {
-		wp_redirect("theme-editor.php?file=$file&theme=$theme");
+		$location = "theme-editor.php?file=$file&theme=$theme";
 	}
 
+	$location = wp_kses_no_null($location);
+	$strip = array('%0d', '%0a');
+	$location = str_replace($strip, '', $location);
+	header("Location: $location");
 	exit();
 
 break;
@@ -97,7 +101,7 @@ default:
 		$theme_name = $a_theme['Name'];
 		if ($theme_name == $theme) $selected = " selected='selected'";
 		else $selected = '';
-		$theme_name = wp_specialchars($theme_name, true);
+		$theme_name = attribute_escape($theme_name);
 		echo "\n\t<option value=\"$theme_name\" $selected>$theme_name</option>";
 	}
 ?>

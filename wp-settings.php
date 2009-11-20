@@ -12,8 +12,10 @@ function unregister_GLOBALS() {
 	
 	$input = array_merge($_GET, $_POST, $_COOKIE, $_SERVER, $_ENV, $_FILES, isset($_SESSION) && is_array($_SESSION) ? $_SESSION : array());
 	foreach ( $input as $k => $v ) 
-		if ( !in_array($k, $noUnset) && isset($GLOBALS[$k]) )
+		if ( !in_array($k, $noUnset) && isset($GLOBALS[$k]) ) {
+			$GLOBALS[$k] = NULL;
 			unset($GLOBALS[$k]);
+		}
 }
 
 unregister_GLOBALS(); 
@@ -199,9 +201,10 @@ $_SERVER = add_magic_quotes($_SERVER);
 
 do_action('sanitize_comment_cookies');
 
-$wp_query   = new WP_Query();
-$wp_rewrite = new WP_Rewrite();
-$wp         = new WP();
+$wp_the_query =& new WP_Query();
+$wp_query     =& $wp_the_query;
+$wp_rewrite   =& new WP_Rewrite();
+$wp           =& new WP();
 
 define('TEMPLATEPATH', get_template_directory());
 

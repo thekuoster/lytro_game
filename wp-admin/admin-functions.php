@@ -265,6 +265,8 @@ function get_post_to_edit($id) {
 	$post->post_title = format_to_edit($post->post_title);
 	$post->post_title = apply_filters('title_edit_pre', $post->post_title);
 
+    $post->post_password = format_to_edit($post->post_password); 
+
 	if ($post->post_status == 'static')
 		$post->page_template = get_post_meta($id, '_wp_page_template', true);
 
@@ -287,7 +289,7 @@ function get_default_post_to_edit() {
 	else if ( !empty($post_title) ) {
 		$text       = wp_specialchars(stripslashes(urldecode($_REQUEST['text'])));
 		$text       = funky_javascript_fix($text);
-		$popupurl   = wp_specialchars($_REQUEST['popupurl']);
+		$popupurl   = clean_url(stripslashes($_REQUEST['popupurl']));
         $post_content = '<a href="'.$popupurl.'">'.$post_title.'</a>'."\n$text";
     }
 
@@ -317,11 +319,15 @@ function get_comment_to_edit($id) {
 
 	$comment = get_comment($id);
 
-	$comment->comment_content = format_to_edit($comment->comment_content, $richedit);
+	$comment->comment_ID = (int) $comment->comment_ID;
+	$comment->comment_post_ID = (int) $comment->comment_post_ID;
+
+	$comment->comment_content = format_to_edit($comment->comment_content);
 	$comment->comment_content = apply_filters('comment_edit_pre', $comment->comment_content);
 
 	$comment->comment_author = format_to_edit($comment->comment_author);
 	$comment->comment_author_email = format_to_edit($comment->comment_author_email);
+	$comment->comment_author_url = clean_url($comment->comment_author_url);
 	$comment->comment_author_url = format_to_edit($comment->comment_author_url);
 
 	return $comment;
@@ -331,6 +337,23 @@ function get_category_to_edit($id) {
 	$category = get_category($id);
 
 	return $category;
+}
+
+function get_user_to_edit($user_id) {
+	$user = new WP_User($user_id);
+	$user->user_login   = attribute_escape($user->user_login);
+	$user->user_email   = attribute_escape($user->user_email);
+	$user->user_url     = clean_url($user->user_url);
+	$user->first_name   = attribute_escape($user->first_name);
+	$user->last_name    = attribute_escape($user->last_name);
+	$user->display_name = attribute_escape($user->display_name);
+	$user->nickname     = attribute_escape($user->nickname);
+	$user->aim          = attribute_escape($user->aim);
+	$user->yim          = attribute_escape($user->yim);
+	$user->jabber       = attribute_escape($user->jabber);
+	$user->description  =  wp_specialchars($user->description);
+
+	return $user;
 }
 
 // Creates a new user from the "Users" form using $_POST information.
@@ -344,7 +367,7 @@ function edit_user($user_id = 0) {
 
 	if ($user_id != 0) {
 		$update = true;
-		$user->ID = $user_id;
+		$user->ID = (int) $user_id;
 		$userdata = get_userdata($user_id);
 		$user->user_login = $wpdb->escape($userdata->user_login);
 	} else {
@@ -369,7 +392,7 @@ function edit_user($user_id = 0) {
 	if (isset ($_POST['email']))
 		$user->user_email = wp_specialchars(trim($_POST['email']));
 	if (isset ($_POST['url'])) {
-		$user->user_url = wp_specialchars(trim($_POST['url']));
+		$user->user_url = clean_url(trim($_POST['url']));
 		$user->user_url = preg_match('/^(https?|ftps?|mailto|news|gopher):/is', $user->user_url) ? $user->user_url : 'http://'.$user->user_url;
 	}
 	if (isset ($_POST['first_name']))
@@ -381,7 +404,7 @@ function edit_user($user_id = 0) {
 	if (isset ($_POST['display_name']))
 		$user->display_name = wp_specialchars(trim($_POST['display_name']));
 	if (isset ($_POST['description']))
-		$user->description = wp_specialchars(trim($_POST['description']));
+		$user->description = trim($_POST['description']);
 	if (isset ($_POST['jabber']))
 		$user->jabber = wp_specialchars(trim($_POST['jabber']));
 	if (isset ($_POST['aim']))
@@ -447,24 +470,27 @@ function edit_user($user_id = 0) {
 
 function get_link_to_edit($link_id) {
 	$link = get_link($link_id);
-	
-	$link->link_url = wp_specialchars($link->link_url, 1);
-	$link->link_name = wp_specialchars($link->link_name, 1);
-	$link->link_description = wp_specialchars($link->link_description);
-	$link->link_notes = wp_specialchars($link->link_notes);
-	$link->link_rss = wp_specialchars($link->link_rss);
-	
+
+	$link->link_url         =        clean_url($link->link_url);
+	$link->link_name        = attribute_escape($link->link_name);
+	$link->link_image       = attribute_escape($link->link_image);
+	$link->link_description = attribute_escape($link->link_description);
+	$link->link_rss         =        clean_url($link->link_rss);
+	$link->link_rel         = attribute_escape($link->link_rel);
+	$link->link_notes       =  wp_specialchars($link->link_notes);
+	$link->post_category    = $link->link_category;
+
 	return $link;
 }
 
 function get_default_link_to_edit() {
 	if ( isset($_GET['linkurl']) )
-		$link->link_url = wp_specialchars($_GET['linkurl'], 1);
+		$link->link_url = clean_url($_GET['linkurl']);
 	else
 		$link->link_url = '';
 	
 	if ( isset($_GET['name']) )
-		$link->link_name = wp_specialchars($_GET['name'], 1);
+		$link->link_name = attribute_escape($_GET['name']);
 	else
 		$link->link_name = '';
 		
@@ -480,10 +506,10 @@ function edit_link($link_id = '') {
 		die(__("Cheatin' uh ?"));
 
 	$_POST['link_url'] = wp_specialchars($_POST['link_url']);
-	$_POST['link_url'] = preg_match('/^(https?|ftps?|mailto|news|gopher):/is', $_POST['link_url']) ? $_POST['link_url'] : 'http://' . $_POST['link_url'];
+	$_POST['link_url'] = clean_url($_POST['link_url']);
 	$_POST['link_name'] = wp_specialchars($_POST['link_name']);
 	$_POST['link_image'] = wp_specialchars($_POST['link_image']);
-	$_POST['link_rss'] = wp_specialchars($_POST['link_rss']);
+	$_POST['link_rss'] = clean_url($_POST['link_rss']);
 	$auto_toggle = get_autotoggle($_POST['link_category']);
 	
 	// if we are in an auto toggle category and this one is visible then we
@@ -826,12 +852,27 @@ function list_meta($meta) {
 			$style = '';
 		if ('_' == $entry['meta_key'] { 0 })
 			$style .= ' hidden';
+
+		if ( is_serialized($entry['meta_value']) ) {
+			if ( is_serialized_string($entry['meta_value']) ) {
+				// this is a serialized string, so we should display it
+				$entry['meta_value'] = maybe_unserialize($entry['meta_value']);
+			} else {
+				// this is a serialized array/object so we should NOT display it
+				--$count;
+				continue;
+			}
+		}
+
+		$entry['meta_key'] = attribute_escape( $entry['meta_key']);
+		$entry['meta_value'] = attribute_escape( $entry['meta_value']);
+		$entry['meta_id'] = (int) $entry['meta_id'];
 		echo "
 			<tr class='$style'>
 				<td valign='top'><input name='meta[{$entry['meta_id']}][key]' tabindex='6' type='text' size='20' value='{$entry['meta_key']}' /></td>
 				<td><textarea name='meta[{$entry['meta_id']}][value]' tabindex='6' rows='2' cols='30'>{$entry['meta_value']}</textarea></td>
-				<td align='center'><input name='updatemeta' type='submit' class='updatemeta' tabindex='6' value='".__('Update')."' /><br />
-				<input name='deletemeta[{$entry['meta_id']}]' type='submit' class='deletemeta' tabindex='6' value='".__('Delete')."' /></td>
+				<td align='center'><input name='updatemeta' type='submit' class='updatemeta' tabindex='6' value='".attribute_escape(__('Update'))."' /><br />
+				<input name='deletemeta[{$entry['meta_id']}]' type='submit' class='deletemeta' tabindex='6' value='".attribute_escape(__('Delete'))."' /></td>
 			</tr>
 		";
 	}
@@ -876,6 +917,7 @@ function meta_form() {
 <?php
 
 	foreach ($keys as $key) {
+		$key = attribute_escape($key);
 		echo "\n\t<option value='$key'>$key</option>";
 	}
 ?>
@@ -894,10 +936,14 @@ function meta_form() {
 
 function add_meta($post_ID) {
 	global $wpdb;
+	$post_ID = (int) $post_ID;
+
+	$protected = array( '_wp_attached_file', '_wp_attachment_metadata', '_wp_old_slug', '_wp_page_template' );
 
 	$metakeyselect = $wpdb->escape(stripslashes(trim($_POST['metakeyselect'])));
 	$metakeyinput = $wpdb->escape(stripslashes(trim($_POST['metakeyinput'])));
-	$metavalue = $wpdb->escape(stripslashes(trim($_POST['metavalue'])));
+	$metavalue = maybe_serialize(stripslashes((trim($_POST['metavalue']))));
+	$metavalue = $wpdb->escape($metavalue);
 
 	if ( ('0' === $metavalue || !empty ($metavalue)) && ((('#NONE#' != $metakeyselect) && !empty ($metakeyselect)) || !empty ($metakeyinput)) ) {
 		// We have a key/value pair. If both the select and the 
@@ -909,6 +955,9 @@ function add_meta($post_ID) {
 		if ($metakeyinput)
 			$metakey = $metakeyinput; // default
 
+		if ( in_array($metakey, $protected) )
+			return false;
+
 		$result = $wpdb->query("
 						INSERT INTO $wpdb->postmeta 
 						(post_id,meta_key,meta_value) 
@@ -919,6 +968,7 @@ function add_meta($post_ID) {
 
 function delete_meta($mid) {
 	global $wpdb;
+	$mid = (int) $mid;
 
 	$result = $wpdb->query("DELETE FROM $wpdb->postmeta WHERE meta_id = '$mid'");
 }
@@ -926,6 +976,14 @@ function delete_meta($mid) {
 function update_meta($mid, $mkey, $mvalue) {
 	global $wpdb;
 
+	$protected = array( '_wp_attached_file', '_wp_attachment_metadata', '_wp_old_slug', '_wp_page_template' );
+
+	if ( in_array($mkey, $protected) )
+		return false;
+
+	$mvalue = maybe_serialize(stripslashes($mvalue));
+	$mvalue = $wpdb->escape($mvalue);
+	$mid = (int) $mid;
 	return $wpdb->query("UPDATE $wpdb->postmeta SET meta_key = '$mkey', meta_value = '$mvalue' WHERE meta_id = '$mid'");
 }
 
@@ -1081,15 +1139,13 @@ function save_mod_rewrite_rules() {
 }
 
 function the_quicktags() {
-	// Browser detection sucks, but until Safari supports the JS needed for this to work people just assume it's a bug in WP
-	if (!strstr($_SERVER['HTTP_USER_AGENT'], 'Safari'))
 		echo '
 		<div id="quicktags">
 			<script src="../wp-includes/js/quicktags.js" type="text/javascript"></script>
 			<script type="text/javascript">if ( typeof tinyMCE == "undefined" || tinyMCE.configs.length < 1 ) edToolbar();</script>
 		</div>
 ';
-	else echo '
+	echo '
 <script type="text/javascript">
 function edInsertContent(myField, myValue) {
 	//IE support
@@ -1547,24 +1603,22 @@ function get_plugins() {
 		}
 	}
 
-	if (!$plugins_dir || !$plugin_files) {
+	if ( !$plugins_dir || !$plugin_files )
 		return $wp_plugins;
-	}
 
-	sort($plugin_files);
-
-	foreach ($plugin_files as $plugin_file) {
+	foreach ( $plugin_files as $plugin_file ) {
 		if ( !is_readable("$plugin_root/$plugin_file"))
 			continue;
 
 		$plugin_data = get_plugin_data("$plugin_root/$plugin_file");
 
-		if (empty ($plugin_data['Name'])) {
+		if ( empty ($plugin_data['Name']) )
 			continue;
-		}
 
 		$wp_plugins[plugin_basename($plugin_file)] = $plugin_data;
 	}
+
+	uasort($wp_plugins, create_function('$a, $b', 'return strnatcasecmp($a["Name"], $b["Name"]);'));
 
 	return $wp_plugins;
 }
@@ -1774,7 +1828,8 @@ o.action.value = 'view';
 o.submit();
 }
 </script>
-<form enctype="multipart/form-data" id="uploadForm" method="post" action="<?php echo $action ?>">
+<form enctype="multipart/form-data" id="uploadForm" method="post" action="<?php echo attribute_escape($action) ?>">
+<?php wp_nonce_field('import-upload'); ?>
 <label for="upload"><?php _e('File:'); ?></label><input type="file" id="upload" name="import" />
 <input type="hidden" name="action" value="save" />
 <div id="buttons">

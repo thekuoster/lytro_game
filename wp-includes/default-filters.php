@@ -33,6 +33,8 @@ add_filter('pre_comment_author_name', 'wp_filter_kses');
 add_filter('pre_comment_author_email', 'wp_filter_kses');
 add_filter('pre_comment_author_url', 'wp_filter_kses');
 
+add_action('comment_form', 'wp_comment_form_unfiltered_html_nonce');
+
 // Default filters for these functions
 add_filter('comment_author', 'wptexturize');
 add_filter('comment_author', 'convert_chars');
@@ -56,6 +58,31 @@ add_filter('pre_category_name', 'trim');
 add_filter('pre_category_name', 'wp_filter_kses');
 add_filter('pre_category_name', 'wp_specialchars', 30);
 add_filter('pre_category_description', 'wp_filter_kses');
+
+//Links
+add_filter('pre_link_name', 'strip_tags');
+add_filter('pre_link_name', 'trim');
+add_filter('pre_link_name', 'wp_filter_kses');
+add_filter('pre_link_name', 'wp_specialchars', 30);
+add_filter('pre_link_description', 'wp_filter_kses');
+add_filter('pre_link_notes', 'wp_filter_kses');
+add_filter('pre_link_url', 'strip_tags');
+add_filter('pre_link_url', 'trim');
+add_filter('pre_link_url', 'clean_url');
+add_filter('pre_link_image', 'strip_tags');
+add_filter('pre_link_image', 'trim');
+add_filter('pre_link_image', 'clean_url');
+add_filter('pre_link_rss', 'strip_tags');
+add_filter('pre_link_rss', 'trim');
+add_filter('pre_link_rss', 'clean_url');
+add_filter('pre_link_target', 'strip_tags');
+add_filter('pre_link_target', 'trim');
+add_filter('pre_link_target', 'wp_filter_kses');
+add_filter('pre_link_target', 'wp_specialchars', 30);
+add_filter('pre_link_rel', 'strip_tags');
+add_filter('pre_link_rel', 'trim');
+add_filter('pre_link_rel', 'wp_filter_kses');
+add_filter('pre_link_rel', 'wp_specialchars', 30);
 
 // Users
 add_filter('pre_user_display_name', 'strip_tags');
@@ -114,6 +141,9 @@ add_filter('comment_text_rss', 'wp_specialchars');
 add_filter('comment_text_rss', 'ent2ncr', 8);
 add_filter('bloginfo_rss', 'ent2ncr', 8);
 add_filter('the_author', 'ent2ncr', 8);
+
+// Misc filters
+add_filter('option_blog_charset', 'wp_specialchars');
 
 // Actions
 add_action('publish_post', 'generic_ping');

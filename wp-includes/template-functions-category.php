@@ -3,8 +3,9 @@
 function get_the_category($id = false) {
 global $post, $category_cache;
 
+	$id = (int) $id;
 	if ( !$id )
-		$id = $post->ID;
+		$id = (int) $post->ID;
 
 	if ( !isset($category_cache[$id]) )
 		update_post_category_cache($id);
@@ -318,14 +319,14 @@ function list_cats($optionall = 1, $all = 'All', $sort_column = 'ID', $sort_orde
 	$num_found=0;
 	$thelist = "";
 
-	foreach ( $categories as $category ) {
+	foreach ( (array) $categories as $category ) {
 		if ( ( intval($hide_empty) == 0 || $category->category_count) && (!$hierarchical || $category->category_parent == $child_of) ) {
 			$num_found++;
 			$link = '<a href="'.get_category_link($category->cat_ID).'" ';
 			if ( $use_desc_for_title == 0 || empty($category->category_description) )
-				$link .= 'title="'. sprintf(__("View all posts filed under %s"), wp_specialchars($category->cat_name)) . '"';
+				$link .= 'title="'. sprintf(__("View all posts filed under %s"), attribute_escape($category->cat_name)) . '"';
 			else
-				$link .= 'title="' . wp_specialchars(apply_filters('category_description',$category->category_description,$category)) . '"';
+				$link .= 'title="' . attribute_escape(apply_filters('category_description',$category->category_description,$category)) . '"';
 			$link .= '>';
 			$link .= apply_filters('list_cats', $category->cat_name, $category).'</a>';
 

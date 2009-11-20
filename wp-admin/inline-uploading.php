@@ -24,6 +24,8 @@ for ($i=0; $i<count($wpvarstoreset); $i += 1) {
 	}
 }
 
+$all = ( 'true' == $all ) ? 'true' : 'false';
+$start = (int) $start;
 $post = (int) $post;
 $images_width = 1;
 
@@ -238,7 +240,7 @@ srcb[{$ID}] = '{$image['guid']}';
 			$xpadding = (128 - $image['uwidth']) / 2;
 			$ypadding = (96 - $image['uheight']) / 2;
 			$style .= "#target{$ID} img { padding: {$ypadding}px {$xpadding}px; }\n";
-			$title = wp_specialchars($image['post_title'], ENT_QUOTES);
+			$title = attribute_escape($image['post_title']);
 			$script .= "aa[{$ID}] = '<a id=\"p{$ID}\" rel=\"attachment\" class=\"imagelink\" href=\"$href\" onclick=\"doPopup({$ID});return false;\" title=\"{$title}\">';
 ab[{$ID}] = '<a class=\"imagelink\" href=\"{$image['guid']}\" onclick=\"doPopup({$ID});return false;\" title=\"{$title}\">';
 imga[{$ID}] = '<img id=\"image{$ID}\" src=\"$src\" alt=\"{$title}\" $height_width />';
@@ -258,7 +260,7 @@ imgb[{$ID}] = '<img id=\"image{$ID}\" src=\"{$image['guid']}\" alt=\"{$title}\" 
 </div>
 ";
 		} else {
-			$title = wp_specialchars($attachment['post_title'], ENT_QUOTES);
+			$title = attribute_escape($attachment['post_title']);
 			$filename = basename($attachment['guid']);
 			$icon = get_attachment_icon($ID);
 			$toggle_icon = "<a id=\"I{$ID}\" onclick=\"toggleOtherIcon({$ID});return false;\" href=\"javascript:void()\">$__using_title</a>";
@@ -429,7 +431,7 @@ richedit = ( typeof tinyMCE == 'object' && tinyMCE.configs.length > 0 );
 function sendToEditor(n) {
 	o = document.getElementById('div'+n);
 	h = o.innerHTML.replace(new RegExp('^\\s*(.*?)\\s*$', ''), '$1'); // Trim
-	h = h.replace(new RegExp(' (class|title|width|height|id|onclick|onmousedown)=([^\'"][^ ]*)( |/|>)', 'g'), ' $1="$2"$3'); // Enclose attribs in quotes
+	h = h.replace(new RegExp(' (class|title|width|height|id|onclick|onmousedown)=([^\'"][^ ]*)(?=( |/|>))', 'g'), ' $1="$2"'); // Enclose attribs in quotes
 	h = h.replace(new RegExp(' (width|height)=".*?"', 'g'), ''); // Drop size constraints
 	h = h.replace(new RegExp(' on(click|mousedown)="[^"]*"', 'g'), ''); // Drop menu events
 	h = h.replace(new RegExp('<(/?)A', 'g'), '<$1a'); // Lowercase tagnames
