@@ -18,15 +18,18 @@ class LJ_Import {
 		$trans_tbl = array_flip($trans_tbl);
 		return strtr($string, $trans_tbl);
 	}
-	
+
 	function greet() {
-		echo '<p>'.__('Howdy! This importer allows you to extract posts from LiveJournal XML export file into your blog.  Pick a LiveJournal file to upload and click Import.').'</p>';
+		echo '<div class="narrow">';
+		echo '<p>'.__('Howdy! Upload your LiveJournal XML export file and we&#8217;ll import the posts into this blog.').'</p>';
+		echo '<p>'.__('Choose a LiveJournal XML file to upload, then click Upload file and import.').'</p>';
 		wp_import_upload_form("admin.php?import=livejournal&amp;step=1");
+		echo '</div>';
 	}
 
 	function import_posts() {
 		global $wpdb, $current_user;
-		
+
 		set_magic_quotes_runtime(0);
 		$importdata = file($this->file); // Read the file into an array
 		$importdata = implode('', $importdata); // squish it
@@ -35,9 +38,8 @@ class LJ_Import {
 		preg_match_all('|<entry>(.*?)</entry>|is', $importdata, $posts);
 		$posts = $posts[1];
 		unset($importdata);
-		echo '<ol>';		
+		echo '<ol>';
 		foreach ($posts as $post) {
-			flush();
 			preg_match('|<subject>(.*?)</subject>|is', $post, $post_title);
 			$post_title = $wpdb->escape(trim($post_title[1]));
 			if ( empty($post_title) ) {
@@ -47,7 +49,7 @@ class LJ_Import {
 
 			preg_match('|<eventtime>(.*?)</eventtime>|is', $post, $post_date);
 			$post_date = strtotime($post_date[1]);
-			$post_date = gmdate('Y-m-d H:i:s', $post_date);
+			$post_date = date('Y-m-d H:i:s', $post_date);
 
 			preg_match('|<event>(.*?)</event>|is', $post, $post_content);
 			$post_content = str_replace(array ('<![CDATA[', ']]>'), '', trim($post_content[1]));
@@ -69,6 +71,8 @@ class LJ_Import {
 				printf(__('Importing post <i>%s</i>...'), stripslashes($post_title));
 				$postdata = compact('post_author', 'post_date', 'post_content', 'post_title', 'post_status');
 				$post_id = wp_insert_post($postdata);
+				if ( is_wp_error( $post_id ) )
+					return $post_id;
 				if (!$post_id) {
 					_e("Couldn't get post ID");
 					echo '</li>';
@@ -78,7 +82,7 @@ class LJ_Import {
 
 			preg_match_all('|<comment>(.*?)</comment>|is', $post, $comments);
 			$comments = $comments[1];
-			
+
 			if ( $comments ) {
 				$comment_post_ID = (int) $post_id;
 				$num_comments = 0;
@@ -118,8 +122,6 @@ class LJ_Import {
 				printf(__('(%s comments)'), $num_comments);
 			}
 			echo '</li>';
-			flush();
-			ob_flush();
 		}
 		echo '</ol>';
 	}
@@ -132,9 +134,11 @@ class LJ_Import {
 		}
 
 		$this->file = $file['file'];
-		$this->import_posts();
+		$result = $this->import_posts();
+		if ( is_wp_error( $result ) )
+			return $result;
 		wp_import_cleanup($file['id']);
-		
+
 		echo '<h3>';
 		printf(__('All done. <a href="%s">Have fun!</a>'), get_option('home'));
 		echo '</h3>';
@@ -147,26 +151,28 @@ class LJ_Import {
 			$step = (int) $_GET['step'];
 
 		$this->header();
-		
+
 		switch ($step) {
 			case 0 :
 				$this->greet();
 				break;
 			case 1 :
 				check_admin_referer('import-upload');
-				$this->import();
+				$result = $this->import();
+				if ( is_wp_error( $result ) )
+					echo $result->get_error_message();
 				break;
 		}
-		
+
 		$this->footer();
 	}
 
 	function LJ_Import() {
-		// Nothing.	
+		// Nothing.
 	}
 }
 
 $livejournal_import = new LJ_Import();
 
-register_importer('livejournal', __('LiveJournal'), __('Import posts from LiveJournal'), array ($livejournal_import, 'dispatch'));
+register_importer('livejournal', __('LiveJournal'), __('Import posts from a LiveJournal XML export file'), array ($livejournal_import, 'dispatch'));
 ?>
