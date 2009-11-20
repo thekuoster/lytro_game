@@ -7,7 +7,7 @@ $list_js = true;
 
 require_once('admin-header.php');
 if (empty($_GET['mode'])) $mode = 'view';
-else $mode = wp_specialchars($_GET['mode'], 1);
+else $mode = attribute_escape($_GET['mode']);
 ?>
 
 <script type="text/javascript">
@@ -30,7 +30,7 @@ function checkAll(form)
 <form name="searchform" action="" method="get"> 
   <fieldset> 
   <legend><?php _e('Show Comments That Contain...') ?></legend> 
-  <input type="text" name="s" value="<?php if (isset($_GET['s'])) echo wp_specialchars($_GET['s'], 1); ?>" size="17" /> 
+  <input type="text" name="s" value="<?php if (isset($_GET['s'])) echo attribute_escape($_GET['s']); ?>" size="17" /> 
   <input type="submit" name="submit" value="<?php _e('Search') ?>"  />  
   <input type="hidden" name="mode" value="<?php echo $mode; ?>" />
   <?php _e('(Searches within comment text, e-mail, URI, and IP address.)') ?>
@@ -44,7 +44,7 @@ if ( !empty( $_POST['delete_comments'] ) ) :
 	$i = 0;
 	foreach ($_POST['delete_comments'] as $comment) : // Check the permissions on each
 		$comment = (int) $comment;
-		$post_id = $wpdb->get_var("SELECT comment_post_ID FROM $wpdb->comments WHERE comment_ID = $comment");
+		$post_id = (int) $wpdb->get_var("SELECT comment_post_ID FROM $wpdb->comments WHERE comment_ID = $comment");
 		$authordata = get_userdata( $wpdb->get_var("SELECT post_author FROM $wpdb->posts WHERE ID = $post_id") );
 		if ( current_user_can('edit_post', $post_id) ) :
 			wp_set_comment_status($comment, "delete");

@@ -1,10 +1,12 @@
 <?php
+if ( isset($_GET['message']) )
+	$_GET['message'] = (int) $_GET['message'];
 $messages[1] = __('Post updated');
 $messages[2] = __('Custom field updated');
 $messages[3] = __('Custom field deleted.');
 ?>
 <?php if (isset($_GET['message'])) : ?>
-<div id="message" class="updated fade"><p><?php echo $messages[$_GET['message']]; ?></p></div>
+<div id="message" class="updated fade"><p><?php echo wp_specialchars($messages[$_GET['message']]); ?></p></div>
 <?php endif; ?>
 
 <form name="post" action="post.php" method="post" id="post">
@@ -24,35 +26,36 @@ if (0 == $post_ID) {
 	$form_extra = "<input type='hidden' name='temp_ID' value='$temp_ID' />";
 	wp_nonce_field('add-post');
 } else {
+	$post_ID = (int) $post_ID;
 	$form_action = 'editpost';
 	$form_extra = "<input type='hidden' name='post_ID' value='$post_ID' />";
 	wp_nonce_field('update-post_' .  $post_ID);
 }
 
-$form_pingback = '<input type="hidden" name="post_pingback" value="' . get_option('default_pingback_flag') . '" id="post_pingback" />';
+$form_pingback = '<input type="hidden" name="post_pingback" value="' . (int) get_option('default_pingback_flag') . '" id="post_pingback" />'; 
 
-$form_prevstatus = '<input type="hidden" name="prev_status" value="' . $post->post_status . '" />';
+$form_prevstatus = '<input type="hidden" name="prev_status" value="' . attribute_escape( $post->post_status ) . '" />'; 
 
-$form_trackback = '<input type="text" name="trackback_url" style="width: 415px" id="trackback" tabindex="7" value="'. str_replace("\n", ' ', $post->to_ping) .'" />';
+$form_trackback = '<input type="text" name="trackback_url" style="width: 415px" id="trackback" tabindex="7" value="'. attribute_escape( str_replace("\n", ' ', $post->to_ping) ) .'" />';
 
 if ('' != $post->pinged) {
 	$pings = '<p>'. __('Already pinged:') . '</p><ul>';
 	$already_pinged = explode("\n", trim($post->pinged));
 	foreach ($already_pinged as $pinged_url) {
-		$pings .= "\n\t<li>$pinged_url</li>";
+		$pings .= "\n\t<li>" . wp_specialchars($pinged_url) . "</li>";
 	}
 	$pings .= '</ul>';
 }
 
-$saveasdraft = '<input name="save" type="submit" id="save" tabindex="3" value="' . __('Save and Continue Editing') . '" />';
+$saveasdraft = '<input name="save" type="submit" id="save" tabindex="3" value="' . attribute_escape(__('Save and Continue Editing')) . '" />';
 
 if (empty($post->post_status)) $post->post_status = 'draft';
 
 ?>
 
-<input type="hidden" name="user_ID" value="<?php echo $user_ID ?>" />
+<input type="hidden" name="user_ID" value="<?php echo (int) $user_ID ?>" />
 <input type="hidden" name="action" value="<?php echo $form_action ?>" />
-<input type="hidden" name="post_author" value="<?php echo $post->post_author ?>" />
+<input type="hidden" name="post_author" value="<?php echo attribute_escape($post->post_author) ?>" />
 
 <?php echo $form_extra ?>
 <?php if (isset($_GET['message']) && 2 > $_GET['message']) : ?>
@@ -82,12 +85,12 @@ addLoadEvent(focusit);
 
 <fieldset id="passworddiv" class="dbx-box">
 <h3 class="dbx-handle"><?php _e('Password-Protect Post') ?></h3> 
-<div class="dbx-content"><input name="post_password" type="text" size="13" id="post_password" value="<?php echo $post->post_password ?>" /></div>
+<div class="dbx-content"><input name="post_password" type="text" size="13" id="post_password" value="<?php echo attribute_escape($post->post_password) ?>" /></div>
 </fieldset>
 
 <fieldset id="slugdiv" class="dbx-box">
 <h3 class="dbx-handle"><?php _e('Post slug') ?></h3> 
-<div class="dbx-content"><input name="post_name" type="text" size="13" id="post_name" value="<?php echo $post->post_name ?>" /></div>
+<div class="dbx-content"><input name="post_name" type="text" size="13" id="post_name" value="<?php echo attribute_escape($post->post_name) ?>" /></div>
 </fieldset>
 
 <fieldset id="categorydiv" class="dbx-box">
@@ -97,7 +100,7 @@ addLoadEvent(focusit);
 <div id="categorychecklist"><?php dropdown_categories(get_settings('default_category')); ?></div></div>
 </fieldset>
 
-<fieldset class="dbx-box">
+<fieldset id="poststatusdiv" class="dbx-box">
 <h3 class="dbx-handle"><?php _e('Post Status') ?></h3> 
 <div class="dbx-content"><?php if ( current_user_can('publish_posts') ) : ?>
 <label for="post_status_publish" class="selectit"><input id="post_status_publish" name="post_status" type="radio" value="publish" <?php checked($post->post_status, 'publish'); ?> /> <?php _e('Published') ?></label>
@@ -107,7 +110,7 @@ addLoadEvent(focusit);
 </fieldset>
 
 <?php if ( current_user_can('edit_posts') ) : ?>
-<fieldset class="dbx-box">
+<fieldset id="posttimestampdiv" class="dbx-box">
 <h3 class="dbx-handle"><?php _e('Post Timestamp'); ?>:</h3>
 <div class="dbx-content"><?php touch_time(($action == 'edit')); ?></div>
 </fieldset>
@@ -123,7 +126,7 @@ foreach ($authors as $o) :
 $o = get_userdata( $o->ID );
 if ( $post->post_author == $o->ID || ( empty($post_ID) && $user_ID == $o->ID ) ) $selected = 'selected="selected"';
 else $selected = '';
-echo "<option value='$o->ID' $selected>$o->display_name</option>";
+echo "<option value='" . (int) $o->ID . "' $selected>" . wp_specialchars($o->display_name) . "</option>";
 endforeach;
 ?>
 </select>
@@ -138,7 +141,7 @@ endforeach;
 
 <fieldset id="titlediv">
   <legend><?php _e('Title') ?></legend> 
-  <div><input type="text" name="post_title" size="30" tabindex="1" value="<?php echo $post->post_title; ?>" id="title" /></div>
+  <div><input type="text" name="post_title" size="30" tabindex="1" value="<?php echo attribute_escape($post->post_title); ?>" id="title" /></div>
 </fieldset>
 
 <fieldset id="<?php echo user_can_richedit() ? 'postdivrich' : 'postdiv'; ?>">
@@ -210,44 +213,44 @@ if ('publish' != $post->post_status || 0 == $post_ID) {
 ?>
 <input name="referredby" type="hidden" id="referredby" value="<?php 
 if ( !empty($_REQUEST['popupurl']) )
-	echo wp_specialchars($_REQUEST['popupurl']);
-else if ( url_to_postid(wp_get_referer()) == $post_ID )
+	echo attribute_escape(stripslashes($_REQUEST['popupurl']));
+else if ( url_to_postid(stripslashes(wp_get_referer())) == $post_ID )
 	echo 'redo';
 else
-	echo wp_specialchars(wp_get_referer());
+	echo attribute_escape(stripslashes(wp_get_referer()));
 ?>" /></p>
 
 <?php do_action('edit_form_advanced'); ?>
 
 <?php
 if (current_user_can('upload_files')) {
-	$uploading_iframe_ID = (0 == $post_ID ? $temp_ID : $post_ID);
+	$uploading_iframe_ID = (int) (0 == $post_ID ? $temp_ID : $post_ID);
 	$uploading_iframe_src = wp_nonce_url("inline-uploading.php?action=view&amp;post=$uploading_iframe_ID", 'inlineuploading');
 	$uploading_iframe_src = apply_filters('uploading_iframe_src', $uploading_iframe_src);
 	if ( false != $uploading_iframe_src )
-		echo '<iframe id="uploading" border="0" src="' . $uploading_iframe_src . '">' . __('This feature requires iframe support.') . '</iframe>';
+		echo '<iframe id="uploading" frameborder="0" src="' . $uploading_iframe_src . '">' . __('This feature requires iframe support.') . '</iframe>';
 }
 ?>
 
 <div id="advancedstuff" class="dbx-group" >
 
-<div class="dbx-box-wrapper">
+<div class="dbx-b-ox-wrapper">
 <fieldset id="postexcerpt" class="dbx-box">
-<div class="dbx-handle-wrapper">
+<div class="dbx-h-andle-wrapper">
 <h3 class="dbx-handle"><?php _e('Optional Excerpt') ?></h3>
 </div>
-<div class="dbx-content-wrapper">
+<div class="dbx-c-ontent-wrapper">
 <div class="dbx-content"><textarea rows="1" cols="40" name="excerpt" tabindex="6" id="excerpt"><?php echo $post->post_excerpt ?></textarea></div>
 </div>
 </fieldset>
 </div>
 
-<div class="dbx-box-wrapper">
-<fieldset class="dbx-box">
-<div class="dbx-handle-wrapper">
+<div class="dbx-b-ox-wrapper">
+<fieldset id="trackbacksdiv" class="dbx-box">
+<div class="dbx-h-andle-wrapper">
 <h3 class="dbx-handle"><?php _e('Trackbacks') ?></h3>
 </div>
-<div class="dbx-content-wrapper">
+<div class="dbx-c-ontent-wrapper">
 <div class="dbx-content"><?php _e('Send trackbacks to'); ?>: <?php echo $form_trackback; ?> (<?php _e('Separate multiple URIs with spaces'); ?>)
 <?php 
 if ( ! empty($pings) )
@@ -258,12 +261,12 @@ if ( ! empty($pings) )
 </fieldset>
 </div>
 
-<div class="dbx-box-wrapper">
+<div class="dbx-b-ox-wrapper">
 <fieldset id="postcustom" class="dbx-box">
-<div class="dbx-handle-wrapper">
+<div class="dbx-h-andle-wrapper">
 <h3 class="dbx-handle"><?php _e('Custom Fields') ?></h3>
 </div>
-<div class="dbx-content-wrapper">
+<div class="dbx-c-ontent-wrapper">
 <div id="postcustomstuff" class="dbx-content">
 <?php 
 if($metadata = has_meta($post_ID)) {
@@ -275,6 +278,7 @@ if($metadata = has_meta($post_ID)) {
 }
 	meta_form();
 ?>
+</div>
 </div>
 </fieldset>
 </div>

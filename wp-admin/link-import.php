@@ -26,7 +26,7 @@ switch ($step) {
 <form enctype="multipart/form-data" action="link-import.php" method="post" name="blogroll">
 <?php wp_nonce_field('import-bookmarks') ?>
 
-<p><?php _e('If a program or website you use allows you to export your links or subscriptions as OPML you may import them here.'); ?>
+<p><?php _e('If a program or website you use allows you to export your links or subscriptions as OPML you may import them here.'); ?></p>
 <div style="width: 70%; margin: auto; height: 8em;">
 <input type="hidden" name="step" value="1" />
 <input type="hidden" name="MAX_FILE_SIZE" value="30000" />
@@ -74,10 +74,9 @@ foreach ($categories as $category) {
 
      <h2><?php _e('Importing...') ?></h2>
 <?php
-                $cat_id = $_POST['cat_id'];
-                if (($cat_id == '') || ($cat_id == 0)) {
-                    $cat_id  = 1;
-                }
+				$cat_id = abs( (int) $_POST['cat_id'] );
+				if ( $cat_id < 1 )
+					$cat_id  = 1;
 
                 $opml_url = $_POST['opml_url'];
                 if (isset($opml_url) && $opml_url != '' && $opml_url != 'http://') {

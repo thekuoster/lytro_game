@@ -40,6 +40,12 @@ class wpdb {
 	//	DB Constructor - connects to the server and selects a database
 
 	function wpdb($dbuser, $dbpassword, $dbname, $dbhost) {
+		return $this->__construct($dbuser, $dbpassword, $dbname, $dbhost);
+	}
+	
+	function __construct($dbuser, $dbpassword, $dbname, $dbhost) {
+		register_shutdown_function(array(&$this, "__destruct"));
+
 		$this->dbh = @mysql_connect($dbhost, $dbuser, $dbpassword);
 		if (!$this->dbh) {
 			$this->bail("
@@ -55,6 +61,10 @@ class wpdb {
 		}
 
 		$this->select($dbname);
+	}
+
+	function __destruct() {
+		return true;		
 	}
 
 	// ==================================================================
@@ -122,7 +132,7 @@ class wpdb {
 	//	Kill cached query results
 
 	function flush() {
-		$this->last_result = null;
+		$this->last_result = array();
 		$this->col_info = null;
 		$this->last_query = null;
 	}
@@ -131,6 +141,11 @@ class wpdb {
 	//	Basic Query	- see docs for more detail
 
 	function query($query) {
+		// filter the query, if filters are available
+		// NOTE: some queries are made before the plugins have been loaded, and thus cannot be filtered with this method
+		if ( function_exists('apply_filters') )
+			$query = apply_filters('query', $query);
+
 		// initialise return
 		$return_val = 0;
 		$this->flush();

@@ -2,6 +2,12 @@
 
 // Template functions
 
+function wp_comment_form_unfiltered_html_nonce() {
+	global $post;
+	if ( current_user_can('unfiltered_html') )
+		wp_nonce_field('unfiltered-html-comment_' . $post->ID, '_wp_unfiltered_html_comment', false);
+}
+
 function comments_template( $file = '/comments.php' ) {
 	global $wp_query, $withcomments, $post, $wpdb, $id, $comment, $user_login, $user_ID, $user_identity;
 
@@ -84,7 +90,7 @@ function wp_insert_comment($commentdata) {
 	('$comment_post_ID', '$comment_author', '$comment_author_email', '$comment_author_url', '$comment_author_IP', '$comment_date', '$comment_date_gmt', '$comment_content', '$comment_approved', '$comment_agent', '$comment_type', '$comment_parent', '$user_id')
 	");
 
-	$id = $wpdb->insert_id;
+	$id = (int) $wpdb->insert_id;
 
 	if ( $comment_approved == 1) {
 		$count = $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->comments WHERE comment_post_ID = '$comment_post_ID' AND comment_approved = '1'");
@@ -108,8 +114,6 @@ function wp_filter_comment($commentdata) {
 function wp_allow_comment($commentdata) {
 	global $wpdb;
 	extract($commentdata);
-
-	$comment_user_domain = apply_filters('pre_comment_user_domain', gethostbyaddr($comment_author_IP) );
 
 	// Simple duplicate check
 	$dupe = "SELECT comment_ID FROM $wpdb->comments WHERE comment_post_ID = '$comment_post_ID' AND ( comment_author = '$comment_author' ";
@@ -215,21 +219,12 @@ function wp_delete_comment($comment_id) {
 	return true;
 }
 
-function clean_url( $url ) {
-	if ('' == $url) return $url;
-	$url = preg_replace('|[^a-z0-9-~+_.?#=&;,/:]|i', '', $url);
-	$url = str_replace(';//', '://', $url);
-	$url = (!strstr($url, '://')) ? 'http://'.$url : $url;
-	$url = preg_replace('/&([^#])(?![a-z]{2,8};)/', '&#038;$1', $url);
-	return $url;
-}
-
 function get_comments_number( $post_id = 0 ) {
 	global $wpdb, $comment_count_cache, $id;
 	$post_id = (int) $post_id;
 
 	if ( !$post_id )
-		$post_id = $id;
+		$post_id = (int) $id;
 
 	if ( !isset($comment_count_cache[$post_id]) )
 		$comment_count_cache[$id] = $wpdb->get_var("SELECT comment_count FROM $wpdb->posts WHERE ID = '$post_id'");
@@ -315,7 +310,7 @@ function comments_popup_link($zero='No Comments', $one='1 Comment', $more='% Com
 		if (!empty($CSSclass)) {
 			echo ' class="'.$CSSclass.'"';
 		}
-		$title = wp_specialchars(apply_filters('the_title', get_the_title()), true);
+		$title = attribute_escape(apply_filters('the_title', get_the_title()));
 		echo ' title="' . sprintf( __('Comment on %s'), $title ) .'">';
 		comments_number($zero, $one, $more, $number);
 		echo '</a>';
@@ -833,7 +828,7 @@ function check_comment($author, $email, $url, $comment, $user_ip, $user_agent, $
 
 	if (1 == get_settings('comment_moderation')) return false; // If moderation is set to manual
 
-	if ( (count(explode('http:', $comment)) - 1) >= get_settings('comment_max_links') )
+	if ( preg_match_all("|(href\t*?=\t*?['\"]?)?(https?:)?//|i", $comment, $out) >= get_option('comment_max_links') )
 		return false; // Check # of external links
 
 	$mod_keys = trim( get_settings('moderation_keys') );
@@ -897,21 +892,21 @@ function sanitize_comment_cookies() {
 	if ( isset($_COOKIE['comment_author_'.COOKIEHASH]) ) {
 		$comment_author = apply_filters('pre_comment_author_name', $_COOKIE['comment_author_'.COOKIEHASH]);
 		$comment_author = stripslashes($comment_author);
-		$comment_author = wp_specialchars($comment_author, true);
+		$comment_author = attribute_escape($comment_author);
 		$_COOKIE['comment_author_'.COOKIEHASH] = $comment_author;
 	}
 
 	if ( isset($_COOKIE['comment_author_email_'.COOKIEHASH]) ) {
 		$comment_author_email = apply_filters('pre_comment_author_email', $_COOKIE['comment_author_email_'.COOKIEHASH]);
 		$comment_author_email = stripslashes($comment_author_email);
-		$comment_author_email = wp_specialchars($comment_author_email, true);	
+		$comment_author_email = attribute_escape($comment_author_email);	
 		$_COOKIE['comment_author_email_'.COOKIEHASH] = $comment_author_email;
 	}
 
 	if ( isset($_COOKIE['comment_author_url_'.COOKIEHASH]) ) {
 		$comment_author_url = apply_filters('pre_comment_author_url', $_COOKIE['comment_author_url_'.COOKIEHASH]);
 		$comment_author_url = stripslashes($comment_author_url);
-		$comment_author_url = wp_specialchars($comment_author_url, true);
+		$comment_author_url = attribute_escape($comment_author_url);
 		$_COOKIE['comment_author_url_'.COOKIEHASH] = $comment_author_url;
 	}
 }

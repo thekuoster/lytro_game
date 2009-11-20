@@ -171,6 +171,7 @@ function user_pass_ok($user_login,$user_pass) {
 
 function get_usernumposts($userid) {
 	global $wpdb;
+	$userid = (int) $userid;
 	return $wpdb->get_var("SELECT COUNT(*) FROM $wpdb->posts WHERE post_author = '$userid' AND post_status = 'publish'");
 }
 
@@ -262,14 +263,43 @@ function url_to_postid($url) {
 
 
 function maybe_unserialize($original) {
-	if ( false !== $gm = @ unserialize($original) )
-		return $gm;
-	else
-		return $original;
+	if ( is_serialized($original) ) // don't attempt to unserialize data that wasn't serialized going in
+		if ( false !== $gm = @ unserialize($original) )
+			return $gm;
+	return $original;
+}
+
+function maybe_serialize($data) {
+	if ( is_string($data) )
+		$data = trim($data);
+	elseif ( is_array($data) || is_object($data) )
+		return serialize($data);
+	if ( is_serialized($data) )
+		return serialize($data);
+	return $data;
+}
+
+function is_serialized($data) {
+	if ( !is_string($data) ) // if it isn't a string, it isn't serialized
+		return false;
+	$data = trim($data);
+	if ( preg_match("/^[adobis]:[0-9]+:.*[;}]/si",$data) ) // this should fetch all legitimately serialized data
+		return true;
+	return false;
+}
+
+function is_serialized_string($data) {
+	if ( !is_string($data) ) // if it isn't a string, it isn't a serialized string
+		return false;
+	$data = trim($data);
+	if ( preg_match("/^s:[0-9]+:.*[;}]/si",$data) ) // this should fetch all serialized strings
+		return true;
+	return false;
 }
 
 /* Options functions */
 
+// expects $setting to already be SQL-escaped
 function get_settings($setting) {
 	global $wpdb;
 
@@ -321,7 +351,7 @@ function get_user_option( $option, $user = 0 ) {
 }
 
 function form_option($option) {
-	echo htmlspecialchars( get_option($option), ENT_QUOTES );
+	echo attribute_escape( get_option($option));
 }
 
 function get_alloptions() {
@@ -347,14 +377,17 @@ function get_alloptions() {
 	return apply_filters('all_options', $all_options);
 }
 
+// expects $option_name to NOT be SQL-escaped
 function update_option($option_name, $newvalue) {
 	global $wpdb;
+
+	$safe_option_name = $wpdb->escape($option_name);
 
 	if ( is_string($newvalue) )
 		$newvalue = trim($newvalue);
 
 	// If the new and old values are the same, no need to update.
-	$oldvalue = get_option($option_name);
+	$oldvalue = get_option($safe_option_name);
 	if ( $newvalue == $oldvalue ) {
 		return false;
 	}
@@ -365,8 +398,7 @@ function update_option($option_name, $newvalue) {
 	}
 
 	$_newvalue = $newvalue;
-	if ( is_array($newvalue) || is_object($newvalue) )
-		$newvalue = serialize($newvalue);
+	$newvalue = maybe_serialize($newvalue);
 
 	wp_cache_set($option_name, $newvalue, 'options');
 
@@ -388,15 +420,17 @@ function update_user_option( $user_id, $option_name, $newvalue, $global = false 
 }
 
 // thx Alex Stapleton, http://alex.vort-x.net/blog/
+// expects $name to NOT be SQL-escaped
 function add_option($name, $value = '', $description = '', $autoload = 'yes') {
 	global $wpdb;
 
+	$safe_name = $wpdb->escape($name);
+
 	// Make sure the option doesn't already exist
-	if ( false !== get_option($name) )
+	if ( false !== get_option($safe_name) )
 		return;
 
-	if ( is_array($value) || is_object($value) )
-		$value = serialize($value);
+	$value = maybe_serialize($value);
 
 	wp_cache_set($name, $value, 'options');
 
@@ -421,20 +455,20 @@ function delete_option($name) {
 function add_post_meta($post_id, $key, $value, $unique = false) {
 	global $wpdb, $post_meta_cache;
 
+	$post_id = (int) $post_id;
+
 	if ( $unique ) {
-		if ( $wpdb->get_var("SELECT meta_key FROM $wpdb->postmeta WHERE meta_key
-= '$key' AND post_id = '$post_id'") ) {
+		if ( $wpdb->get_var("SELECT meta_key FROM $wpdb->postmeta WHERE meta_key = '$key' AND post_id = '$post_id'") ) {
 			return false;
 		}
 	}
 
-	$original = $value;
-	if ( is_array($value) || is_object($value) )
-		$value = $wpdb->escape(serialize($value));
+	$post_meta_cache[$post_id][$key][] = $value;
+
+	$value = maybe_serialize($value);
+	$value = $wpdb->escape($value);
 
 	$wpdb->query("INSERT INTO $wpdb->postmeta (post_id,meta_key,meta_value) VALUES ('$post_id','$key','$value')");
-
-	$post_meta_cache['$post_id'][$key][] = $original;
 
 	return true;
 }
@@ -442,37 +476,37 @@ function add_post_meta($post_id, $key, $value, $unique = false) {
 function delete_post_meta($post_id, $key, $value = '') {
 	global $wpdb, $post_meta_cache;
 
+	$post_id = (int) $post_id;
+
 	if ( empty($value) ) {
-		$meta_id = $wpdb->get_var("SELECT meta_id FROM $wpdb->postmeta WHERE
-post_id = '$post_id' AND meta_key = '$key'");
+		$meta_id = $wpdb->get_var("SELECT meta_id FROM $wpdb->postmeta WHERE post_id = '$post_id' AND meta_key = '$key'");
 	} else {
-		$meta_id = $wpdb->get_var("SELECT meta_id FROM $wpdb->postmeta WHERE
-post_id = '$post_id' AND meta_key = '$key' AND meta_value = '$value'");
+		$meta_id = $wpdb->get_var("SELECT meta_id FROM $wpdb->postmeta WHERE post_id = '$post_id' AND meta_key = '$key' AND meta_value = '$value'");
 	}
 
 	if ( !$meta_id )
 		return false;
 
 	if ( empty($value) ) {
-		$wpdb->query("DELETE FROM $wpdb->postmeta WHERE post_id = '$post_id'
-AND meta_key = '$key'");
-		unset($post_meta_cache['$post_id'][$key]);
+		$wpdb->query("DELETE FROM $wpdb->postmeta WHERE post_id = '$post_id' AND meta_key = '$key'");
+		unset($post_meta_cache[$post_id][$key]);
 	} else {
-		$wpdb->query("DELETE FROM $wpdb->postmeta WHERE post_id = '$post_id'
-AND meta_key = '$key' AND meta_value = '$value'");
-		$cache_key = $post_meta_cache['$post_id'][$key];
+		$wpdb->query("DELETE FROM $wpdb->postmeta WHERE post_id = '$post_id' AND meta_key = '$key' AND meta_value = '$value'");
+		$cache_key = $post_meta_cache[$post_id][$key];
 		if ($cache_key) foreach ( $cache_key as $index => $data )
 			if ( $data == $value )
-				unset($post_meta_cache['$post_id'][$key][$index]);
+				unset($post_meta_cache[$post_id][$key][$index]);
 	}
 
-	unset($post_meta_cache['$post_id'][$key]);
+	unset($post_meta_cache[$post_id][$key]);
 
 	return true;
 }
 
 function get_post_meta($post_id, $key, $single = false) {
 	global $wpdb, $post_meta_cache;
+
+	$post_id = (int) $post_id;
 
 	if ( isset($post_meta_cache[$post_id][$key]) ) {
 		if ( $single ) {
@@ -507,34 +541,33 @@ function get_post_meta($post_id, $key, $single = false) {
 function update_post_meta($post_id, $key, $value, $prev_value = '') {
 	global $wpdb, $post_meta_cache;
 
+	$post_id = (int) $post_id;
+
 	$original_value = $value;
-	if ( is_array($value) || is_object($value) )
-		$value = $wpdb->escape(serialize($value));
+	$value = maybe_serialize($value);
+	$value = $wpdb->escape($value);
 
 	$original_prev = $prev_value;
-	if ( is_array($prev_value) || is_object($prev_value) )
-		$prev_value = $wpdb->escape(serialize($prev_value));
+	$prev_value = maybe_serialize($prev_value);
+	$prev_value = $wpdb->escape($prev_value);
 
-	if (! $wpdb->get_var("SELECT meta_key FROM $wpdb->postmeta WHERE meta_key
-= '$key' AND post_id = '$post_id'") ) {
+	if (! $wpdb->get_var("SELECT meta_key FROM $wpdb->postmeta WHERE meta_key = '$key' AND post_id = '$post_id'") ) {
 		return false;
 	}
 
 	if ( empty($prev_value) ) {
-		$wpdb->query("UPDATE $wpdb->postmeta SET meta_value = '$value' WHERE
-meta_key = '$key' AND post_id = '$post_id'");
-		$cache_key = $post_meta_cache['$post_id'][$key];
+		$wpdb->query("UPDATE $wpdb->postmeta SET meta_value = '$value' WHERE meta_key = '$key' AND post_id = '$post_id'");
+		$cache_key = $post_meta_cache[$post_id][$key];
 		if ( !empty($cache_key) )
 			foreach ($cache_key as $index => $data)
-				$post_meta_cache['$post_id'][$key][$index] = $original_value;
+				$post_meta_cache[$post_id][$key][$index] = $original_value;
 	} else {
-		$wpdb->query("UPDATE $wpdb->postmeta SET meta_value = '$value' WHERE
-meta_key = '$key' AND post_id = '$post_id' AND meta_value = '$prev_value'");
-		$cache_key = $post_meta_cache['$post_id'][$key];
+		$wpdb->query("UPDATE $wpdb->postmeta SET meta_value = '$value' WHERE meta_key = '$key' AND post_id = '$post_id' AND meta_value = '$prev_value'");
+		$cache_key = $post_meta_cache[$post_id][$key];
 		if ( !empty($cache_key) )
 			foreach ($cache_key as $index => $data)
 				if ( $data == $original_prev )
-					$post_meta_cache['$post_id'][$key][$index] = $original_value;
+					$post_meta_cache[$post_id][$key][$index] = $original_value;
 	}
 
 	return true;
@@ -581,6 +614,7 @@ function &get_post(&$post, $output = OBJECT) {
 			$post_cache[$post->ID] = &$post;
 		$_post = & $post_cache[$post->ID];
 	} else {
+		$post = (int) $post;
 		if ( $_post = wp_cache_get($post, 'pages') )
 			return get_page($_post, $output);
 		elseif ( isset($post_cache[$post]) )
@@ -684,6 +718,7 @@ function &get_page(&$page, $output = OBJECT) {
 		wp_cache_add($page->ID, $page, 'pages');
 		$_page = $page;
 	} else {
+		$page = (int) $page;
 		if ( isset($GLOBALS['page']) && ($page == $GLOBALS['page']->ID) ) {
 			$_page = & $GLOBALS['page'];
 			wp_cache_add($_page->ID, $_page, 'pages');
@@ -742,6 +777,7 @@ function &get_category(&$category, $output = OBJECT) {
 		wp_cache_add($category->cat_ID, $category, 'category');
 		$_category = $category;
 	} else {
+		$category = (int) $category;
 		if ( ! $_category = wp_cache_get($category, 'category') ) {
 			$_category = $wpdb->get_row("SELECT * FROM $wpdb->categories WHERE cat_ID = '$category' LIMIT 1");
 			wp_cache_add($category, $_category, 'category');
@@ -779,6 +815,7 @@ function &get_comment(&$comment, $output = OBJECT) {
 			$comment_cache[$comment->comment_ID] = &$comment;
 		$_comment = & $comment_cache[$comment->comment_ID];
 	} else {
+		$comment = (int) $comment;
 		if ( !isset($comment_cache[$comment]) ) {
 			$_comment = $wpdb->get_row("SELECT * FROM $wpdb->comments WHERE comment_ID = '$comment' LIMIT 1");
 			$comment_cache[$comment->comment_ID] = & $_comment;
@@ -844,9 +881,10 @@ function timer_stop($display = 0, $precision = 3) { //if called like timer_stop(
 	$mtime = $mtime[1] + $mtime[0];
 	$timeend = $mtime;
 	$timetotal = $timeend-$timestart;
+	$r = number_format($timetotal, $precision);
 	if ( $display )
-		echo number_format($timetotal,$precision);
-	return $timetotal;
+		echo $r;
+	return $r;
 }
 
 function weblog_ping($server = '', $path = '') {
@@ -1193,7 +1231,7 @@ function merge_filters($tag) {
 	}
 
 	if ( isset($wp_filter[$tag]) )
-		ksort( $wp_filter[$tag] );
+		uksort( $wp_filter[$tag], "strnatcasecmp" );
 }
 
 function apply_filters($tag, $string) {
@@ -1443,7 +1481,7 @@ function update_post_caches(&$posts) {
 		// Change from flat structure to hierarchical:
 		$post_meta_cache = array();
 		foreach ($meta_list as $metarow) {
-			$mpid = $metarow['post_id'];
+			$mpid = (int) $metarow['post_id'];
 			$mkey = $metarow['meta_key'];
 			$mval = $metarow['meta_value'];
 
@@ -1993,7 +2031,7 @@ function get_home_template() {
 function get_page_template() {
 	global $wp_query;
 
-	$id = $wp_query->post->ID;
+	$id = (int) $wp_query->post->ID;
 	$template = get_post_meta($id, '_wp_page_template', true);
 
 	if ( 'default' == $template )
@@ -2085,6 +2123,11 @@ function add_query_arg() {
 			$uri = @func_get_arg(2);
 	}
 
+	if ( $frag = strstr($uri, '#') )
+		$uri = substr($uri, 0, -strlen($frag));
+	else
+		$frag = '';
+
 	if ( preg_match('|^https?://|i', $uri, $matches) ) {
 		$protocol = $matches[0];
 		$uri = substr($uri, strlen($protocol));
@@ -2124,7 +2167,7 @@ function add_query_arg() {
 			$ret .= "$k=$v";
 		}
 	}
-	$ret = $protocol . $base . $ret;
+	$ret = $protocol . $base . $ret . $frag;
 	return trim($ret, '?');
 }
 
@@ -2132,13 +2175,14 @@ function remove_query_arg($key, $query) {
 	return add_query_arg($key, '', $query);
 }
 
-function load_template($file) {
+function load_template($_template_file) {
 	global $posts, $post, $wp_did_header, $wp_did_template_redirect, $wp_query,
 		$wp_rewrite, $wpdb;
 
-	extract($wp_query->query_vars);
+	if ( is_array($wp_query->query_vars) )
+		extract($wp_query->query_vars, EXTR_SKIP);
 
-	require_once($file);
+	require_once($_template_file);
 }
 
 function add_magic_quotes($array) {
@@ -2155,10 +2199,21 @@ function add_magic_quotes($array) {
 }
 
 function wp_remote_fopen( $uri ) {
+	$timeout = 10;
+	$parsed_url = @parse_url($uri);
+
+	if ( !$parsed_url || !is_array($parsed_url) )
+		return false;
+
+	if ( !isset($parsed_url['scheme']) || !in_array($parsed_url['scheme'], array('http','https')) )
+		$uri = 'http://' . $uri;
+
 	if ( ini_get('allow_url_fopen') ) {
-		$fp = fopen( $uri, 'r' );
+		$fp = @fopen( $uri, 'r' );
 		if ( !$fp )
 			return false;
+
+		//stream_set_timeout($fp, $timeout); // Requires php 4.3
 		$linea = '';
 		while( $remote_read = fread($fp, 4096) )
 			$linea .= $remote_read;
@@ -2169,6 +2224,7 @@ function wp_remote_fopen( $uri ) {
 		curl_setopt ($handle, CURLOPT_URL, $uri);
 		curl_setopt ($handle, CURLOPT_CONNECTTIMEOUT, 1);
 		curl_setopt ($handle, CURLOPT_RETURNTRANSFER, 1);
+		curl_setopt ($handle, CURLOPT_TIMEOUT, $timeout);
 		$buffer = curl_exec($handle);
 		curl_close($handle);
 		return $buffer;
@@ -2197,8 +2253,10 @@ function status_header( $header ) {
 	elseif ( 410 == $header )
 		$text = 'Gone';
 
-	@header("HTTP/1.1 $header $text");
-	@header("Status: $header $text");
+	if ( version_compare(phpversion(), '4.3.0', '>=') )
+		@header("HTTP/1.1 $header $text", true, $header);
+	else
+		@header("HTTP/1.1 $header $text");
 }
 
 function nocache_headers() {
@@ -2213,7 +2271,7 @@ function get_usermeta( $user_id, $meta_key = '') {
 	$user_id = (int) $user_id;
 
 	if ( !empty($meta_key) ) {
-		$meta_key = preg_replace('|a-z0-9_|i', '', $meta_key);
+		$meta_key = preg_replace('|[^a-z0-9_]|i', '', $meta_key);
 		$metas = $wpdb->get_results("SELECT meta_key, meta_value FROM $wpdb->usermeta WHERE user_id = '$user_id' AND meta_key = '$meta_key'");
 	} else {
 		$metas = $wpdb->get_results("SELECT meta_key, meta_value FROM $wpdb->usermeta WHERE user_id = '$user_id'");
@@ -2246,9 +2304,11 @@ function update_usermeta( $user_id, $meta_key, $meta_value ) {
 		return false;
 	$meta_key = preg_replace('|[^a-z0-9_]|i', '', $meta_key);
 
-	if ( is_array($meta_value) || is_object($meta_value) )
-		$meta_value = serialize($meta_value);
-	$meta_value = trim( $meta_value );
+	// FIXME: usermeta data is assumed to be already escaped
+	if ( is_string($meta_value) )
+		$meta_value = stripslashes($meta_value);
+	$meta_value = maybe_serialize($meta_value);
+	$meta_value = $wpdb->escape($meta_value);
 	
 	if (empty($meta_value)) {
 		delete_usermeta($user_id, $meta_key);
@@ -2321,22 +2381,24 @@ function wp_nonce_url($actionurl, $action = -1) {
 	return wp_specialchars(add_query_arg('_wpnonce', wp_create_nonce($action), $actionurl));
 }
 
-function wp_nonce_field($action = -1) {
-	echo '<input type="hidden" name="_wpnonce" value="' . wp_create_nonce($action) . '" />';
-	wp_referer_field();
+function wp_nonce_field($action = -1, $name = "_wpnonce", $referer = true) {
+	$name = attribute_escape($name);
+	echo '<input type="hidden" name="' . $name . '" value="' . wp_create_nonce($action) . '" />';
+	if ( $referer )
+		wp_referer_field();
 }
 
 function wp_referer_field() {
-	$ref = wp_specialchars($_SERVER['REQUEST_URI']);
+	$ref = attribute_escape(stripslashes($_SERVER['REQUEST_URI']));
 	echo '<input type="hidden" name="_wp_http_referer" value="'. $ref . '" />';
 	if ( wp_get_original_referer() ) {
-		$original_ref = wp_specialchars(stripslashes(wp_get_original_referer()));
+		$original_ref = attribute_escape(stripslashes(wp_get_original_referer()));
 		echo '<input type="hidden" name="_wp_original_http_referer" value="'. $original_ref . '" />';
 	}
 }
 
 function wp_original_referer_field() {
-	echo '<input type="hidden" name="_wp_original_http_referer" value="' . wp_specialchars(stripslashes($_SERVER['REQUEST_URI'])) . '" />';
+	echo '<input type="hidden" name="_wp_original_http_referer" value="' . attribute_escape(stripslashes($_SERVER['REQUEST_URI'])) . '" />';
 }
 
 function wp_get_referer() {
@@ -2413,7 +2475,7 @@ function wp_explain_nonce($action) {
 		}
 	}
 
-	return __('Are you sure you want to do this');
+	return __('Are you sure you want to do this?');
 }
 
 function wp_nonce_ays($action) {
@@ -2421,7 +2483,7 @@ function wp_nonce_ays($action) {
 
 	$adminurl = get_settings('siteurl') . '/wp-admin';
 	if ( wp_get_referer() )
-		$adminurl = wp_get_referer();
+		$adminurl = attribute_escape(stripslashes(wp_get_referer()));
 
 	$title = __('WordPress Confirmation');
 	// Remove extra layer of slashes.
@@ -2433,12 +2495,12 @@ function wp_nonce_ays($action) {
 		foreach ( (array) $q as $a ) {
 			$v = substr(strstr($a, '='), 1);
 			$k = substr($a, 0, -(strlen($v)+1));
-			$html .= "\t\t<input type='hidden' name='" . wp_specialchars( urldecode($k), 1 ) . "' value='" . wp_specialchars( urldecode($v), 1 ) . "' />\n";
+			$html .= "\t\t<input type='hidden' name='" . attribute_escape( urldecode($k)) . "' value='" . attribute_escape( urldecode($v)) . "' />\n";
 		}
 		$html .= "\t\t<input type='hidden' name='_wpnonce' value='" . wp_create_nonce($action) . "' />\n";
-		$html .= "\t\t<div id='message' class='confirm fade'>\n\t\t<p>" . wp_explain_nonce($action) . "</p>\n\t\t<p><a href='$adminurl'>" . __('No') . "</a> <input type='submit' value='" . __('Yes') . "' /></p>\n\t\t</div>\n\t</form>\n";
+		$html .= "\t\t<div id='message' class='confirm fade'>\n\t\t<p>" . wp_specialchars(wp_explain_nonce($action)) . "</p>\n\t\t<p><a href='$adminurl'>" . __('No') . "</a> <input type='submit' value='" . __('Yes') . "' /></p>\n\t\t</div>\n\t</form>\n";
 	} else {
-		$html .= "\t<div id='message' class='confirm fade'>\n\t<p>" . wp_explain_nonce($action) . "</p>\n\t<p><a href='$adminurl'>" . __('No') . "</a> <a href='" . add_query_arg( '_wpnonce', wp_create_nonce($action), $_SERVER['REQUEST_URI'] ) . "'>" . __('Yes') . "</a></p>\n\t</div>\n";
+		$html .= "\t<div id='message' class='confirm fade'>\n\t<p>" . wp_specialchars(wp_explain_nonce($action)) . "</p>\n\t<p><a href='$adminurl'>" . __('No') . "</a> <a href='" . clean_url(add_query_arg('_wpnonce', wp_create_nonce($action), $_SERVER['REQUEST_URI'])) . "'>" . __('Yes') . "</a></p>\n\t</div>\n";
 	}
 	$html .= "</body>\n</html>";
 	wp_die($html, $title);

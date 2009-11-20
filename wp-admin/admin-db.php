@@ -34,7 +34,7 @@ function get_editable_authors( $user_id ) {
 		return false;
 	} else {
 		$editable = join(',', $editable);
-		$authors = $wpdb->get_results( "SELECT * FROM $wpdb->users WHERE ID IN ($editable)" );
+		$authors = $wpdb->get_results( "SELECT * FROM $wpdb->users WHERE ID IN ($editable) ORDER BY display_name" );
 	}
 
 	return apply_filters('get_editable_authors', $authors);
@@ -110,7 +110,7 @@ function wp_insert_category($catarr) {
 
 	if (!$update) {
 		$wpdb->query("INSERT INTO $wpdb->categories (cat_ID, cat_name, category_nicename, category_description, category_parent) VALUES ('0', '$cat_name', '$category_nicename', '$category_description', '$category_parent')");
-		$cat_ID = $wpdb->insert_id;
+		$cat_ID = (int) $wpdb->insert_id;
 	} else {
 		$wpdb->query ("UPDATE $wpdb->categories SET cat_name = '$cat_name', category_nicename = '$category_nicename', category_description = '$category_description', category_parent = '$category_parent' WHERE cat_ID = '$cat_ID'");
 	}
@@ -207,7 +207,7 @@ function category_exists($cat_name) {
 	if (!$category_nicename = sanitize_title($cat_name))
 		return 0;
 
-	return $wpdb->get_var("SELECT cat_ID FROM $wpdb->categories WHERE category_nicename = '$category_nicename'");
+	return (int) $wpdb->get_var("SELECT cat_ID FROM $wpdb->categories WHERE category_nicename = '$category_nicename'");
 }
 
 function wp_delete_user($id, $reassign = 'novalue') {
@@ -266,23 +266,57 @@ function wp_insert_link($linkdata) {
 	extract($linkdata);
 
 	$update = false;
+
 	if ( !empty($link_id) )
 		$update = true;
 
+	$link_id = (int) $link_id;
+
+	if( trim( $link_name ) == '' )
+		return 0;
+	$link_name = apply_filters('pre_link_name', $link_name);
+
+	if( trim( $link_url ) == '' )
+		return 0;
+	$link_url = apply_filters('pre_link_url', $link_url);
+
 	if ( empty($link_rating) )
 		$link_rating = 0;	
+	else
+		$link_rating = (int) $link_rating;
+
+	if ( empty($link_image) )
+		$link_image = '';
+	$link_image = apply_filters('pre_link_image', $link_image);
 
 	if ( empty($link_target) )
 		$link_target = '';	
+	$link_target = apply_filters('pre_link_target', $link_target);
 
 	if ( empty($link_visible) )
 		$link_visible = 'Y';
-		
+	$link_visibile = preg_replace('/[^YNyn]/', '', $link_visible);
+
 	if ( empty($link_owner) )
 		$link_owner = $current_user->id;
+	else
+		$link_owner = (int) $link_owner;
 
 	if ( empty($link_notes) )
 		$link_notes = '';
+	$link_notes = apply_filters('pre_link_notes', $link_notes);
+
+	if ( empty($link_description) )
+		$link_description = '';
+	$link_description = apply_filters('pre_link_description', $link_description);
+
+	if ( empty($link_rss) )
+		$link_rss = '';
+	$link_rss = apply_filters('pre_link_rss', $link_rss);
+
+	if ( empty($link_rel) )
+		$link_rel = '';
+	$link_rel = apply_filters('pre_link_rel', $link_rel);
 
 	if ( $update ) {
 		$wpdb->query("UPDATE $wpdb->links SET link_url='$link_url',
@@ -294,7 +328,7 @@ function wp_insert_link($linkdata) {
 			WHERE link_id='$link_id'");
 	} else {
 		$wpdb->query("INSERT INTO $wpdb->links (link_url, link_name, link_image, link_target, link_category, link_description, link_visible, link_owner, link_rating, link_rel, link_notes, link_rss) VALUES('$link_url','$link_name', '$link_image', '$link_target', '$link_category', '$link_description', '$link_visible', '$link_owner', '$link_rating', '$link_rel', '$link_notes', '$link_rss')");
-		$link_id = $wpdb->insert_id;
+		$link_id = (int) $wpdb->insert_id;
 	}
 	
 	if ( $update )

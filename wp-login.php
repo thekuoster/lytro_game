@@ -127,7 +127,7 @@ break;
 case 'resetpass' :
 
 	// Generate something random for a password... md5'ing current time with a rand salt
-	$key = preg_replace('/a-z0-9/i', '', $_GET['key']);
+	$key = preg_replace('/[^a-z0-9]/i', '', $_GET['key']);
 	if ( empty($key) )
 		die( __('Sorry, that key does not appear to be valid.') );
 	$user = $wpdb->get_row("SELECT * FROM $wpdb->users WHERE user_activation_key = '$key'");
@@ -166,7 +166,7 @@ default:
 	$user_login = '';
 	$user_pass = '';
 	$using_cookie = false;
-	if ( !isset( $_REQUEST['redirect_to'] ) )
+	if ( !isset( $_REQUEST['redirect_to'] ) || is_user_logged_in() )
 		$redirect_to = 'wp-admin/';
 	else
 		$redirect_to = $_REQUEST['redirect_to'];
@@ -231,14 +231,14 @@ if ( $error )
 ?>
 
 <form name="loginform" id="loginform" action="wp-login.php" method="post">
-<p><label><?php _e('Username:') ?><br /><input type="text" name="log" id="log" value="<?php echo wp_specialchars(stripslashes($user_login), 1); ?>" size="20" tabindex="1" /></label></p>
+<p><label><?php _e('Username:') ?><br /><input type="text" name="log" id="log" value="<?php echo attribute_escape(stripslashes($user_login)); ?>" size="20" tabindex="1" /></label></p>
 <p><label><?php _e('Password:') ?><br /> <input type="password" name="pwd" id="pwd" value="" size="20" tabindex="2" /></label></p>
 <p>
   <label><input name="rememberme" type="checkbox" id="rememberme" value="forever" tabindex="3" /> 
   <?php _e('Remember me'); ?></label></p>
 <p class="submit">
 	<input type="submit" name="submit" id="submit" value="<?php _e('Login'); ?> &raquo;" tabindex="4" />
-	<input type="hidden" name="redirect_to" value="<?php echo wp_specialchars($redirect_to); ?>" />
+	<input type="hidden" name="redirect_to" value="<?php echo attribute_escape($redirect_to); ?>" />
 </p>
 </form>
 <ul>
