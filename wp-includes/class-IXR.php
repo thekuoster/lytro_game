@@ -1,11 +1,17 @@
 <?php
-/*
-   IXR - The Inutio XML-RPC Library - (c) Incutio Ltd 2002-2005
-   Version 1.7 (beta) - Simon Willison, 23rd May 2005
-   Site:   http://scripts.incutio.com/xmlrpc/
-   Manual: http://scripts.incutio.com/xmlrpc/manual.php
-   Made available under the BSD License: http://www.opensource.org/licenses/bsd-license.php
-*/
+/**
+ * IXR - The Inutio XML-RPC Library
+ *
+ * @package IXR
+ * @since 1.5
+ *
+ * @copyright Incutio Ltd 2002-2005
+ * @version 1.7 (beta) 23rd May 2005
+ * @author Simon Willison
+ * @link http://scripts.incutio.com/xmlrpc/ Site
+ * @link http://scripts.incutio.com/xmlrpc/manual.php Manual
+ * @license BSD License http://www.opensource.org/licenses/bsd-license.php
+ */
 
 class IXR_Value {
     var $data;
@@ -565,7 +571,7 @@ class IXR_Error {
     var $message;
     function IXR_Error($code, $message) {
         $this->code = $code;
-        $this->message = $message;
+        $this->message = htmlspecialchars($message);
     }
     function getXml() {
         $xml = <<<EOD
