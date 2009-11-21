@@ -1,31 +1,76 @@
 <?php
-// ** MySQL settings ** //
-define('DB_NAME', WIZARD_DBNAME);    // The name of the database
-define('DB_USER', WIZARD_DBUSER);     // Your MySQL username
-define('DB_PASSWORD', WIZARD_DBPASSWORD); // ...and password
-define('DB_HOST', WIZARD_DBSERVER);    // 99% chance you won't need to change this value
+/** 
+ * The base configurations of the WordPress.
+ *
+ * This file has the following configurations: MySQL settings, Table Prefix,
+ * Secret Keys, WordPress Language, and ABSPATH. You can find more information by
+ * visiting {@link http://codex.wordpress.org/Editing_wp-config.php Editing
+ * wp-config.php} Codex page. You can get the MySQL settings from your web host.
+ *
+ * This file is used by the wp-config.php creation script during the
+ * installation. You don't have to use the web site, you can just copy this file
+ * to "wp-config.php" and fill in the values.
+ *
+ * @package WordPress
+ */
+
+// ** MySQL settings - You can get this info from your web host ** //
+/** The name of the database for WordPress */
+define('DB_NAME', WIZARD_DBNAME);
+
+/** MySQL database username */
+define('DB_USER', WIZARD_DBUSER);
+
+/** MySQL database password */
+define('DB_PASSWORD', WIZARD_DBPASSWORD);
+
+/** MySQL hostname */
+define('DB_HOST', WIZARD_DBSERVER);
+
+/** Database Charset to use in creating database tables. */
 define('DB_CHARSET', 'utf8');
+
+/** The Database Collate type. Don't change this if in doubt. */
 define('DB_COLLATE', '');
 
-// Change each KEY to a different unique phrase.  You won't have to remember the phrases later,
-// so make them long and complicated.  You can visit http://api.wordpress.org/secret-key/1.1/
-// to get keys generated for you, or just make something up.  Each key should have a different phrase.
-define('AUTH_KEY', WIZARD_AUTH_KEY); // Change this to a unique phrase.
-define('SECURE_AUTH_KEY', WIZARD_SECURE_AUTH_KEY); // Change this to a unique phrase.
-define('LOGGED_IN_KEY', WIZARD_LOGGED_IN_KEY); // Change this to a unique phrase.
+/**#@+
+ * Authentication Unique Keys.
+ *
+ * Change these to different unique phrases!
+ * You can generate these using the {@link https://api.wordpress.org/secret-key/1.1/ WordPress.org secret-key service}
+ *
+ * @since 2.6.0
+ */
+define('AUTH_KEY', WIZARD_AUTH_KEY);
+define('SECURE_AUTH_KEY', WIZARD_SECURE_AUTH_KEY);
+define('LOGGED_IN_KEY', WIZARD_LOGGED_IN_KEY);
+define('NONCE_KEY', WIZARD_NONCE_KEY);
+/**#@-*/
 
-// You can have multiple installations in one database if you give each a unique prefix
-$table_prefix  = 'wp_';   // Only numbers, letters, and underscores please!
+/**
+ * WordPress Database Table prefix.
+ *
+ * You can have multiple installations in one database if you give each a unique
+ * prefix. Only numbers, letters, and underscores please!
+ */
+$table_prefix  = 'wp_';
 
-// Change this to localize WordPress.  A corresponding MO file for the
-// chosen language must be installed to wp-content/languages.
-// For example, install de.mo to wp-content/languages and set WPLANG to 'de'
-// to enable German language support.
+/**
+ * WordPress Localized Language, defaults to English.
+ *
+ * Change this to localize WordPress.  A corresponding MO file for the chosen
+ * language must be installed to wp-content/languages. For example, install
+ * de.mo to wp-content/languages and set WPLANG to 'de' to enable German
+ * language support.
+ */
 define ('WPLANG', '');
 
 /* That's all, stop editing! Happy blogging. */
 
+/** WordPress absolute path to the Wordpress directory. */
 if ( !defined('ABSPATH') )
 	define('ABSPATH', dirname(__FILE__) . '/');
+
+/** Sets up WordPress vars and included files. */
 require_once(ABSPATH . 'wp-settings.php');
 ?>
