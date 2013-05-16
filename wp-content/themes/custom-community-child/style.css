@@ -1,0 +1,55 @@
+/*
+Theme Name:	Custom Community Child
+Description: 	Child theme for the custom community them
+Author:		Emily Kuo
+Template:	custom-community
+*/
+
+@import url("../custom-community/style.css");
+
+#logo { 
+	display: none !important; 
+ }
+
+.nggv-link-like, .nggv-link-dislike{
+	display:inline-block;
+}
+
+hr {
+	height:3px !important;
+}
+
+.thin{
+	height:1px !important;
+}
+
+.ngg-img-wrapper{
+	float: left;
+}
+
+.ngg-gallery-thumbnail-box{
+	width:235px;
+	height:235px;
+	margin-right:5px;
+}
+
+.ngg-gallery-thumbnail a{
+	display:block !important;
+}
+
+.ngg-gallery-thumbnail img{
+	display: block;
+	margin: auto !important;
+}
+
+.ngg-gallery-thumbnail{
+	width: 100%;
+	height: 100%;
+	display: inline-block !important;
+	vertical-align: middle !important;
+}
+
+.nggv_container{
+	margin-bottom: 10px;
+	text-align: center;
+}

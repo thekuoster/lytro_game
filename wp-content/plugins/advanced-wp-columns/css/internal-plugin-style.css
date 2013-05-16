@@ -1,0 +1,125 @@
+/* 
+    Document   : internal-plugin-style.css
+    Created on : Jun 10, 2012, 10:28:15 PM
+    Author     : LordMX
+    Description:
+        This file contains all CSS styles which is used in this "Advanced WP Columns Plugin" popup window.
+        Please do not modify content bellow if you are not sure what you are doing.
+*/
+
+body {font-family: arial; font-size: 10px; margin:0px;overflow: hidden;
+      min-height: 500px;}
+input:focus { outline: none;}
+
+.left { float: left; }
+.right { float: right; }
+.clear { clear: both; }
+
+.left-separator { margin-left: 10px;}
+.right-separator { margin-right: 10px;}
+
+#columnsNumber { width: 20px;}
+#gutterWidth, #fullWidth { border-radius: 5px 5px 5px 5px;
+                           font-size: 11px;
+                           padding: 4px 5px;
+                           width: 45px;}
+ul { list-style: none; margin: 0;
+     padding: 0;}
+.ui-spinner { background: white/*{bgColorActive}*/ url(../js/themes/base/images/ui-bg_glass_65_ffffff_1x400.png)/*{bgImgUrlActive}*/ 50%/*{bgActiveXPos}*/ 50%/*{bgActiveYPos}*/ repeat-x/*{bgActiveRepeat}*/ !important;}
+
+#designer-panel
+{
+    border-radius: 0px;
+    background-color: #E9E9E9;	
+    padding: 0px;	
+}
+.title-label
+{
+    font-size: 12px;
+    padding: 10px 5px;
+    font-weight: bold;
+    color: #606060;
+}
+.bottom-buttons-holder
+{
+    background-color: #E9E9E9;
+    display: block;
+    padding: 5px;
+    text-align: right;
+    border-top: 1px solid #AAAAAA;
+}
+/*---------------------*/
+.columns { 
+    background-color: #FFFFFF; 
+    padding: 10px 5px;
+    overflow: auto;
+    height: 185px;
+    overflow-y: hidden; 
+    position: relative;
+}
+.holder
+{
+    border: 1px solid #DFDFDF;	
+    border-radius: 5px;
+    background-color:#FFFFFF;
+    width: 255px;
+}
+.white {background-color:#FFFFFF;padding:5px;}
+.input-holder
+{
+    background-color:#FFFFFF;
+    display: block;
+    margin: 0px;
+}
+.holder .header
+{
+    color: #222222;
+    background-color: #F1F1F1;
+    border-bottom: 1px solid #DFDFDF;
+    border-radius: 5px 5px 0 0;
+    display: block;
+    font-size: 11px;
+    padding: 2px 5px;
+    line-height: 20px;	
+    font-weight: bold;
+}
+.content-holder {margin: 5px 0;
+                 padding: 0 5px;}
+.content-holder .single_column_content
+{
+    border: 1px solid #DFDFDF;
+    width: 100%;
+    overflow-x: hidden;
+    overflow: auto;
+    height: 145px;
+}
+.content-holder .single_column_content *
+{
+    max-width: 100%;
+}
+.content-holder .single_column_content img
+{
+    border: none;
+}
+.content-holder-wrapper
+{
+    width: 540px;
+    /*calculate width*/
+}
+#selected_text
+{
+    width: 100% !important;
+    height: 130px !important;
+}
+.top-menu
+{
+    font-family: arial;
+    font-size: 12px;
+    padding: 4px 5px 20px;
+    vertical-align: middle;
+    color: #333333;
+}
+.top-menu li
+{
+    margin-right: 15px;
+}

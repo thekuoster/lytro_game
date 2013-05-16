@@ -1,0 +1,22 @@
+/* 
+    Document   : wp-columns-theme-style.css
+    Created on : Jun 10, 2012, 12:45:31 PM
+    Author     : LordMX
+    Description:
+        This is the plugin CSS which is loaded within your theme.
+        These are few CSS classes where you can add your own code to make this
+        plugin more "friendly" with your theme.
+*/
+
+.advanced_wp_columns_wrapper
+{}
+.advanced_wp_column
+{}
+.advanced_wp_column img
+{
+    /*to make sure that images fit into column*/
+    max-width: 100% !important;   
+    height: auto !important;
+}
+.advanced_wp_gutter
+{}
